@@ -169,7 +169,7 @@ function logbase(options, subs, ...args) {
     const {appID, streamName} = options;
     const {type} = subs;
     if (appID) {
-        const x = `[${appID}.${streamName}]${type?`/${type}`:''}`;
+        const x = `zzx[${appID}.${streamName}]${type?`/${type}`:''}`;
         console.log(x, toDebugString(...args));//?', this.logFile, process.env.npm_package_name, __dirname, process.cwd());
         // console.log(require.main);
         // fs.appendFile(this.logFile, '\n' + toDebugString(...args), err => {
