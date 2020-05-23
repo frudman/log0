@@ -1,8 +1,9 @@
 {
   "name": "log0",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "a minimal (micro) logger to replace console.log based server-side development",
   "main": "index.js",
+  "homepage": "git@github.com:frudman/log0.git",
   "repository": {
     "type": "git",
     "url": "git@github.com:frudman/log0.git"
