@@ -1,43 +1,7 @@
-"use strict"; // keep until es-moduled (read below)
-
-/* Runtime instructions:
-   - cd ~/devx/builder && node log0 app-name [stream-name] [stream-name]
-*/
-
-// when running as viewer (cmd line) MUST specify APP name as first parm
-
-// todo: option to simply dump everything so far
-// todo: options to redump all or start from now (e.g. when restarting during the day)
-// todo: option to save logs for the day, week, ...
-
-// - could specify WHICH dir to use (instead of ~/.log0/app-name)
+"use strict"; // keep until es-moduled
 
 // ALL LOGGING is done to files
 // OPTION to ALSO go directly to console for 1 or more of the streams
-
-/*
-    logging means different things to different people: for production apps, logging is meant
-    to record events as they happen for later analysis (esp large apps with cloud-based logging)
-    for bug extraction and performance improvement or feature enhancement.
-
-    For developers, the stage matters: beta, production, alpha, or early (pre-alpha)
-
-    Often, early on, "logging" is really shortform debuggin (not involving an actual debugger)
-
-    It doesn't replace a debugger, it's just another too in the toolbelt.
-
-    In these cases, logging is not so much to "log an event" but to "dump a value" as app
-    is running to see what's going on (esp when a denugger is not available or practical or worth
-        that particular effort)
-        
-    Just plain 'console.log' this stuff and see if it looks right.
-
-    For these times, different parts of the app may be generating different amount of information
-    and you may want separate windows (i.e. terminals) to see each in realtime
-
-    In particular, when you do fancy window-like handling of main stdout, may want other windows
-    to dump "running commentary" (reality checks) of debugging statements
-*/
 
 const fs = require('fs'),
       fsp = fs.promises;
@@ -75,72 +39,8 @@ function extractStreamName(filename) {
 }
 
 // Are we being required or cmd-line executed?
-(require.main === module) && DisplayRunningLogs();
+//(require.main === module) && DisplayRunningLogs();
 
-// FOR COMMAND LINE EXECUTION
-async function DisplayRunningLogs() {
-
-    const [nodeBinPath, log0AppPath, appID, ...streamNames] = process.argv;
-
-    appID || throwe('need an app name or identifier to listen for logs');
-
-    const userDir = require('os').homedir();
-    
-    const logDir = `${userDir}/${LOG0_APP_DIR}/${appID}`;
-    await fsp.mkdir(logDir, { recursive: true }); // always
-
-    const observeAll = streamNames.length === 0,
-          observeSingle = streamNames.length === 1,
-          stream = streamNames.reduce((streams,name) => (streams[name] = {
-                name, pos:0, file: `${logDir}/${genFileName(name)}`
-          }, streams), {});
-
-    function validStream(filename) {
-        const name = extractStreamName(filename);
-        if (name)
-            return (name in stream) ? stream[name]
-                : observeAll ? (stream[name] = {pos:0,name,file:`${logDir}/${filename}`})
-                : false;
-
-        return false;
-    }
-
-    fs.watch(logDir, async (eventType, filename) => {
-        const stream = validStream(filename);
-        try {            
-            stream && await dumpNewEntries(stream);
-        }
-        catch(ex) {
-            FileNotFound(ex) ? (stream.pos = 0) : console.log('whoops', ex.message || ex.error || ex);
-        }
-    });
-
-    async function dumpNewEntries(stream) {
-        const {file, name: streamName} = stream;
-        const prefix = observeSingle ? `` : `\n[${streamName}]  `;
-        return new Promise((resolve,reject) => {
-            if (stream.pos === 0) { // starting fresh so skip past log entries
-                fs.stat(file, (err,stats) => {
-                    if (err) return reject(err); // likely file deleted by user
-                    if (stats.size > 0) {
-                        console.log(`[SKIPPING PREVIOUS LOG ENTRIES (${stats.size} bytes) in ${file}]`)
-                        stream.pos = stats.size;
-                        resolve();
-                    }
-                });
-            }
-            else
-                fs.createReadStream(file, {start: stream.pos, encoding: 'utf8'})
-                    .on('data', data => {
-                        process.stdout.write(prefix ? data.replace(/\n/g, prefix) : data);
-                        stream.pos += data.length;
-                    })
-                    .on('error', err => reject(err))
-                    .on('end', () => resolve())
-                    .on('close', () => {}); // resolve here instead?
-        });
-    }
-}
 
 // WHEN REQUIRED
 
@@ -169,7 +69,7 @@ function logbase(options, subs, ...args) {
     const {appID, streamName} = options;
     const {type} = subs;
     if (appID) {
-        const x = `zzx[${appID}.${streamName}]${type?`/${type}`:''}`;
+        const x = `[${appID}.${streamName}]${type?`/${type}`:''}`;
         console.log(x, toDebugString(...args));//?', this.logFile, process.env.npm_package_name, __dirname, process.cwd());
         // console.log(require.main);
         // fs.appendFile(this.logFile, '\n' + toDebugString(...args), err => {
