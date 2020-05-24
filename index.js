@@ -9,40 +9,28 @@ const fs = require('fs'),
 const throwe = err => { throw new Error(err); }
 const FileNotFound = ex => ex.errno === 2 || /ENOENT/i.test(ex.code || '');
 
-function todayAsYYYYMMDD() {
-    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
-    // use above to convert from `2020-05-22T14:48:00.000Z` to `20200522`
-    return new Date().toISOString().replace(/T.*|\D+/g, ''); 
-}
+const LOG0_APP_DIR = '.log0/logs'; // e.g. `~/.log0/logs/app-name` for mac & linux
+const userDir = require('os').homedir();
+const getLogDir = appID => `${userDir}/${LOG0_APP_DIR}/${appID}`;
 
-// log files kept in: userDir/LOG0_APP_DIR/appID` 
-const LOG0_APP_DIR = '.log0'; // e.g. `~/.log0/rehtml` for mac & linux
-const USE_DATES_FOR_LOGS = false; // not needed since for dev only
+// const USE_DATES_FOR_LOGS = false; // not needed since for dev only
+// function todayAsYYYYMMDD() {
+//     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
+//     // use above to convert from `2020-05-22T14:48:00.000Z` to `20200522`
+//     return new Date().toISOString().replace(/T.*|\D+/g, ''); 
+// }
 
-function genFileName(streamName) { // todayLogName?
-    return (USE_DATES_FOR_LOGS ? `${todayAsYYYYMMDD()}-` : '') + streamName;
-}
+// function genFileName(streamName) { // todayLogName?
+//     return (USE_DATES_FOR_LOGS ? `${todayAsYYYYMMDD()}-` : '') + streamName;
+// }
+
+// function extractStreamName(filename) {
+//     return USE_DATES_FOR_LOGS ? (filename.match(/^\d{8}[-]([^/]+)$/) || [])[1] : filename;
+// }
 
 function genLogFileFullName(appID, streamName) {
-    const userDir = require('os').homedir();   
-    const logDir = `${userDir}/${LOG0_APP_DIR}/${appID}`;
-
-    // must create dir without waiting, so need flag to indicate ready to write to logs
-
-    //await fsp.mkdir(logDir, { recursive: true }); // always
-
-    return {logDir};
+    return getLogDir(appID) + '/' + streamName;
 }
-
-function extractStreamName(filename) {
-    return USE_DATES_FOR_LOGS ? (filename.match(/^\d{8}[-]([^/]+)$/) || [])[1] : filename;
-}
-
-// Are we being required or cmd-line executed?
-//(require.main === module) && DisplayRunningLogs();
-
-
-// WHEN REQUIRED
 
 // based on: https://stackoverflow.com/a/28397970/11256689
 // - https://nodejs.org/api/util.html#util_util_inspect_object_options
@@ -60,46 +48,75 @@ function toDebugString(...args) {
                        : a).join(' ');
 }
 
-function logbase(options, subs, ...args) {
+// for a heavily used log, keep open stream instead of appending to it as one-offs
+// need to know to close it when app exits (on error or otherwise)
 
-    // DOES NOT USE THIS.
-    // never called directly in the wild, only by functions below
-    // that know to pass 2 extra parms: main options, and suboptions 
+// base console might be changed, taken over so keep original safe
+const CONSOLE_LOG = console.log.bind(console);
 
-    const {appID, streamName} = options;
-    const {type} = subs;
-    if (appID) {
-        const x = `[${appID}.${streamName}]${type?`/${type}`:''}`;
-        console.log(x, toDebugString(...args));//?', this.logFile, process.env.npm_package_name, __dirname, process.cwd());
-        // console.log(require.main);
-        // fs.appendFile(this.logFile, '\n' + toDebugString(...args), err => {
-        //     err && console.log('WHAT???', err);
-        // });
-    }
-    else {
-        console.log('[PLAIN-LOG]', toDebugString(...args))
-    }
-}
+process.on('exit', (...args) => {
+    // called NOMATTER WHAT (even if unhandled exceptions/rejections)
+    // good place to close open streams (if any)
+    // - so, when opening a stream, set process.on(exit) to close it
+    CONSOLE_LOG('app exiting', args);
+})
+// process.on('uncaughtException', (...args) => {
+//     CONSOLE_LOG('app exiting: UNCAUGHT EXCEPTION', args);
 
-const log = createLogger(logbase);//, 'stdout'); // NEED an APP-ID
+// })
+// process.on('unhandledRejection', (...args) => {
+//     // yep, it's a thing!
+//     CONSOLE_LOG('app exiting: UNHANDLED REJECTION', args);    
+// })
 
 // only 1 console so singleton for all loggers
 let CONSOLE_OVERRIDE = false;
 
-function createLogger(logFcnx) {
+function createLogger() {
 
-    const logger = {}; // primary options for this logger (can be overriden below)
+    const settings = {}; // primary options for this logger (can be overriden below)
 
-    //const logFcn = logFcnx.bind(loggerThis);
-    function logFcn(...args) {
-        logbase(logger, {}, ...args);
+    function logger(...args) {
+        logbase({}, ...args);
     }
 
-    const def = (methodName, method) => Object.defineProperty(logFcn, methodName, {
+    function logbase(addtl, ...args) { // need level/type/severity: info, debug, warn/warning, error, critical
+
+        const {fileFullName, fileStream, appID, streamName } = settings;
+        const logEntry = toDebugString(...args);
+
+        const {type} = addtl; // call-specific options
+
+        if (fileStream) {
+            fileStream.write('\n' + logEntry, 'utf8');
+        }
+        else if (fileFullName) {
+            //CONSOLE_LOG("WR", fileFullName, '-->', logEntry)
+            fs.appendFile(fileFullName, '\n' + logEntry, err => {
+                CONSOLE_LOG('wrote it', err, fileFullName, logEntry);
+            });
+            //CONSOLE_LOG('sent');
+        }
+        else {
+            CONSOLE_LOG(`\n[PLAIN-LOG:${appID||'--no-app-id--'}.${streamName||'--no-stream-name--'}]${type?`/${type}`:''}`, logEntry)
+        }
+    }
+
+    const def = (methodName, method) => Object.defineProperty(logger, methodName, {
             enumerable: false,
             configurable: false,
             writable: false,
             value: method//.bind(loggerThis)
+    });
+
+    def('separateLevel', (...levels) => {
+        // e.g. error & warning in own file
+
+        return logger;
+    });
+
+    def('severity', levels=> {
+        return logger;
     });
 
     def('appID', function(appIDx, streamName = 'stdout') {
@@ -108,16 +125,18 @@ function createLogger(logFcnx) {
 
         // make sure not already set: if so, create a new sub logger?
 
-        const appid = appIDx // may be a filename so extract from it
+        const appID = appIDx // may be a filename so extract from it
             .replace(/[/]index[.]js$/,'') // remove trailing /index.js (if any)
             .replace(/[.]js$/,'') // remove trailing .js
             .replace(/.*?[/]([^/]+)$/, '$1'); // keep last part of the path (i.e. /no/no/no/no/yes)
     
 
-        logger.appID = appid;
-        logger.streamName = streamName;
-        //console.log('sxetting appid', appid, streamName, this);
-        return logFcn;
+        settings.appID = appID;
+        settings.streamName = streamName;
+
+        settings.fileFullName = genLogFileFullName(appID, streamName);
+
+        return logger;
     });
 
     def('redirectConsole', function(streamName) {
@@ -127,52 +146,33 @@ function createLogger(logFcnx) {
             console.log('SORRY, already overriden!')
         }
         else {
-            console.log('CONSOLE redirected to ' + logger.appID + '/' + (streamName || logger.streamName))
+            console.log('CONSOLE redirected to ' + settings.appID + '/' + (streamName || settings.streamName))
         }
-        return logFcn;
+        return logger;
     });
 
     def('newStream', streamName => {
-        const actual = logger.appID + '.' + streamName;
-        return createLogger(logbase).appID(actual);
-        // const opts = Object.assign({}, logger);
-        // opts.streamName = actual;
+        return createLogger().appID(settings.appID, settings.streamName + '.' + streamName);
     })
-    // logFcn.newStream = function(streamName) {
-    //     const actualName = this.streamName ? `${this.streamName}.${streamName}` : streamName;
-    // }
 
-    logFcn.enableIf = () => {}; // or just enable(x); if x a fcn, reevaluated each time
-    logFcn.disableIf = () => {}
+    logbase.enableIf = () => {}; // or just enable(x); if x a fcn, reevaluated each time
+    logbase.disableIf = () => {}
 
     // log/info/debug, error/warning/warn
     //def('info', createLogger(log, 'infox'));
-    def('info', (...args) => {
 
-        // are .info .error .warning separate streams? so in separate files?
-        // separate substream? (what does this mean?)
-        // or same stream but with indicator?
-
-        logbase(logger, {type: 'info'}, ...args);
-        return logFcn;
-    });
-
-    def('log', (...args) => {
-
-        // are .info .error .warning separate streams? so in separate files?
-        // separate substream? (what does this mean?)
-        // or same stream but with indicator?
-
-        logbase(logger, {}, ...args);
-        return logFcn;
-    });
+    // are .info .error .warning separate streams? so in separate files?
+    // separate substream? (what does this mean?)
+    // or same stream but with indicator?
 
 
-    //logFcn.info = ()=>{}
-    logFcn.warning = ()=>{}
-    logFcn.error = ()=>{}
+    def('log', (...args) => (logbase({}, ...args), logger));
+    def('info', (...args) => (logbase({type: 'info'}, ...args), logger) );
+    def('warning', (...args) => (logbase({type: 'warning'}, ...args), logger) );
+    def('error', (...args) => (logbase({type: 'error'}, ...args), logger) );
 
-    logFcn.takeOverConsole = function() {
+
+    logbase.takeOverConsole = function() {
         // can/should only be done once by ???
         if (CONSOLE_OVERRIDE) {
             // error: already taken over; do it again?
@@ -188,10 +188,10 @@ function createLogger(logFcnx) {
             console.warn = ()=>{};
             console.debug = ()=>{};
         }
-        return logFcn;
+        return logger;
     }
 
-    return logFcn;
+    return logger;
 
 
 
@@ -247,8 +247,13 @@ function createLogger(logFcnx) {
 
 }
 
+const log = createLogger();
+
 module.exports = {
     log,
     log0: log,
     consoleString,
+
+    getLogDir,
+    FileNotFound,
 }

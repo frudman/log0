@@ -5,22 +5,22 @@
 // todo: option to save logs for the day, week, always (e.g. yyyymmdd-type archives)
 // todo: specify custom dir for logs instead of default '~/.log0/logs/app-name'
 
+// don't display name if stdout (default main console)
+// when asking for a stream, display all SUBstreams also (e.g. parsing & parsing.subber)
+// - then that main name not displayed ('parsing') only subber
+
 const wr = txt => process.stdout.write(txt); // shorthand
 const [nodeBinPath, log0AppPath, appID, ...streamNames] = process.argv;
 
-appID || process.exit(1,wr(`need app's name/identifier to listen for logs\n`));
-
-const LOG0_APP_DIR = '.log0/logs';
-const userDir = require('os').homedir();
-const logDir = `${userDir}/${LOG0_APP_DIR}/${appID}`;
+appID || process.exit(1,wr(`need app's name/identifier to view its running logs\n`));
 
 const fs = require('fs');
-const FileNotFound = ex => ex.errno === 2 || /ENOENT/i.test(ex.code || '');
+const { getLogDir, FileNotFound } = require('./index.js');
+const logDir = getLogDir(appID);
 
 fs.mkdirSync(logDir, { recursive: true }); // always
 
 DisplayRunningLogs(logDir, streamNames);
-
 
 async function DisplayRunningLogs(logDir, streamNames) {
 
@@ -50,8 +50,8 @@ async function DisplayRunningLogs(logDir, streamNames) {
         // issue (not worth worrying about)
         // if file is deleted by user, it will be correctly monitored when/if re-created
         // but, if file is trimmed (i.e. its length is reduced, as in rewriting its content),
-        // the new content will NOT begin to display until its new length becomes greater
-        // than what it was before (since stream.pos will ignore the beginning of the new content)
+        // the new content will NOT begin to display until its new length becomes greater than
+        // what it was before (since stream.pos will be larger than the new content, initially)
 
         const prefix = observeSingle ? `` : `\n[${stream.name}]  `;
         return new Promise((resolve,reject) => {
