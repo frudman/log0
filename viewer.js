@@ -8,7 +8,7 @@
 const wr = txt => process.stdout.write(txt); // shorthand
 const [nodeBinPath, log0AppPath, appID, ...streamNames] = process.argv;
 
-appID || process.exit(1,wr("need app's name/identifier to listen for logs\n"));
+appID || process.exit(1,wr(`need app's name/identifier to listen for logs\n`));
 
 const LOG0_APP_DIR = '.log0/logs';
 const userDir = require('os').homedir();
@@ -25,16 +25,20 @@ DisplayRunningLogs(logDir, streamNames);
 async function DisplayRunningLogs(logDir, streamNames) {
 
     const observeAll = streamNames.length === 0,
-          observeSingle = streamNames.length === 1,
-          setStream = name => stream[name] = {name, pos:0, file: `${logDir}/${name}`},
-          stream = streamNames.reduce((streams,name) => (setStream(name), streams), {});
+          observeSingle = streamNames.length === 1,          
+          streams = {};
 
-    const validStream = name => name ? (name in stream) ? stream[name] : observeAll ? setStream(name) : false : false;
+    function setStream(name) {
+        const file = logDir + '/' + name, {size:pos} = fs.statSync(file);
+        return streams[name] = {name, file, pos, valid: observeAll || streamNames.includes(name)};
+    }
+
+    fs.readdirSync(logDir).forEach(setStream);
 
     fs.watch(logDir, async (eventType, filename) => {
-        const stream = validStream(filename);
+        const stream = streams[filename] || setStream(filename);
         try {            
-            stream && await dumpNewEntries(stream);
+            stream.valid && await dumpNewEntries(stream);
         }
         catch(ex) {
             FileNotFound(ex) ? (stream.pos = 0) : wr(`${ex.message || ex.error || ex}\n`);
@@ -46,30 +50,19 @@ async function DisplayRunningLogs(logDir, streamNames) {
         // issue (not worth worrying about)
         // if file is deleted by user, it will be correctly monitored when/if re-created
         // but, if file is trimmed (i.e. its length is reduced, as in rewriting its content),
-        // the new content will NOT be displayed unless/until its length is greater than
-        // what it was before (since pos, below, will skip over that new content)
+        // the new content will NOT begin to display until its new length becomes greater
+        // than what it was before (since stream.pos will ignore the beginning of the new content)
 
-        const {file, name, pos} = stream;
-        const prefix = observeSingle ? `` : `\n[${name}]  `;
+        const prefix = observeSingle ? `` : `\n[${stream.name}]  `;
         return new Promise((resolve,reject) => {
-            if (pos === 0) { // starting fresh so skip past log entries
-                fs.stat(file, (err,stats) => {
-                    if (err) return reject(err); // likely file deleted by user
-                    if (stats.size > 0) {
-                        wr(`\n[SKIPPING PREVIOUS LOG ENTRIES (${stats.size} bytes) in ${file}]\n`)
-                        resolve(stream.pos = stats.size);
-                    }
-                });
-            }
-            else
-                fs.createReadStream(file, {start: pos, encoding: 'utf8'})
-                    .on('data', data => {
-                        wr(prefix ? data.replace(/\n/g, prefix) : data);
-                        stream.pos += data.length;
-                    })
-                    .on('error', err => reject(err))
-                    .on('end', () => resolve())
-                    .on('close', () => {}); // resolve here instead?
+            fs.createReadStream(stream.file, {start: stream.pos, encoding: 'utf8'})
+                .on('data', data => {
+                    wr(prefix ? data.replace(/\n/g, prefix) : data);
+                    stream.pos += data.length;
+                })
+                .on('error', err => reject(err))
+                .on('end', resolve) // no more data (still open) [1st]
+                .on('close', resolve); // underlying stream closed [last]
         });
     }
 }
