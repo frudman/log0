@@ -1,7 +1,11 @@
 "use strict"; // keep until es-moduled
 
 // ALL LOGGING is done to files
-// OPTION to ALSO go directly to console for 1 or more of the streams
+// OPTION to ALSO go directly to console for 1 or more of the streams?
+
+// todo: for a heavily used log, keep open stream instead of appending to it as one-offs
+// - need to know to close it when app exits (on error or otherwise)
+
 
 const fs = require('fs'),
       fsp = fs.promises;
@@ -13,21 +17,6 @@ const LOG0_APP_DIR = '.log0/logs'; // e.g. `~/.log0/logs/app-name` for mac & lin
 const userDir = require('os').homedir();
 const getLogDir = appID => `${userDir}/${LOG0_APP_DIR}/${appID}`;
 
-// const USE_DATES_FOR_LOGS = false; // not needed since for dev only
-// function todayAsYYYYMMDD() {
-//     // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString
-//     // use above to convert from `2020-05-22T14:48:00.000Z` to `20200522`
-//     return new Date().toISOString().replace(/T.*|\D+/g, ''); 
-// }
-
-// function genFileName(streamName) { // todayLogName?
-//     return (USE_DATES_FOR_LOGS ? `${todayAsYYYYMMDD()}-` : '') + streamName;
-// }
-
-// function extractStreamName(filename) {
-//     return USE_DATES_FOR_LOGS ? (filename.match(/^\d{8}[-]([^/]+)$/) || [])[1] : filename;
-// }
-
 function genLogFileFullName(appID, streamName) {
     return getLogDir(appID) + '/' + streamName;
 }
@@ -38,18 +27,25 @@ function genLogFileFullName(appID, streamName) {
 const util = require('util'),
       consoleString = util.inspect.custom; // for help while debugging
 
-function toDebugString(...args) { 
+// colors as per: https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+// also read: https://stackoverflow.com/a/41407246
+// fyi: https://blog.bitsrc.io/coloring-your-terminal-using-nodejs-eb647d4af2a2
+const esc = `\x1b`, red = 31, brightRedx = 91, brightRed = `1;31`, black = 40, reset = 0,
+      colorize = (clr,txt) => txt ? `${esc}[${clr}m${txt}${esc}[${reset}m` : `${esc}[${clr}m`,
+      redish = txt => colorize(brightRed, txt);
+
+// used for util.inspect options
+const defaultUtilInspectOpts = {depth: 2, colors: true};
+function toDebugString(inspectOpts, ...args) { 
     // similar to what's displayed by console.log(...args)
     // based on: https://nodejs.org/api/util.html#util_util_inspect_object_options
+    // todo: COLORIZE undefined/null/empty-string?
     return args.map(a => a === undefined ? '--undefined--' 
                        : a === null ? '--null--'
                        : a === '' ? "''"
-                       : typeof a === 'object' ? util.inspect(a, {depth: 2, colors: true}) 
+                       : typeof a === 'object' ? util.inspect(a, inspectOpts || defaultUtilInspectOpts) 
                        : a).join(' ');
 }
-
-// for a heavily used log, keep open stream instead of appending to it as one-offs
-// need to know to close it when app exits (on error or otherwise)
 
 // base console might be changed, taken over so keep original safe
 const CONSOLE_LOG = console.log.bind(console);
@@ -82,20 +78,18 @@ function createLogger() {
 
     function logbase(addtl, ...args) { // need level/type/severity: info, debug, warn/warning, error, critical
 
-        const {fileFullName, fileStream, appID, streamName } = settings;
-        const logEntry = toDebugString(...args);
+        const {fileFullName, fsStream, appID, streamName } = settings;
+        const {type,consoleOpts} = addtl; // call-specific options
 
-        const {type} = addtl; // call-specific options
+        const logEntry = toDebugString(consoleOpts, ...args);
 
-        if (fileStream) {
-            fileStream.write('\n' + logEntry, 'utf8');
+        if (fsStream) {
+            fsStream.write('\n' + logEntry, 'utf8');
         }
         else if (fileFullName) {
-            //CONSOLE_LOG("WR", fileFullName, '-->', logEntry)
             fs.appendFile(fileFullName, '\n' + logEntry, err => {
-                CONSOLE_LOG('wrote it', err, fileFullName, logEntry);
+                err && CONSOLE_LOG('error writing to log', fileFullName, logEntry, err);
             });
-            //CONSOLE_LOG('sent');
         }
         else {
             CONSOLE_LOG(`\n[PLAIN-LOG:${appID||'--no-app-id--'}.${streamName||'--no-stream-name--'}]${type?`/${type}`:''}`, logEntry)
@@ -107,6 +101,10 @@ function createLogger() {
             configurable: false,
             writable: false,
             value: method//.bind(loggerThis)
+    });
+
+    def('colorize', flag => {
+        return logger;
     });
 
     def('separateLevel', (...levels) => {
@@ -142,42 +140,13 @@ function createLogger() {
     def('redirectConsole', function(streamName) {
         // can only be called once, after which ALL console.log calls
         // from any module (incl. 3rd party) will be redirected
-        if (CONSOLE_OVERRIDE) {
-            console.log('SORRY, already overriden!')
-        }
-        else {
-            console.log('CONSOLE redirected to ' + settings.appID + '/' + (streamName || settings.streamName))
-        }
-        return logger;
-    });
-
-    def('newStream', streamName => {
-        return createLogger().appID(settings.appID, settings.streamName + '.' + streamName);
-    })
-
-    logbase.enableIf = () => {}; // or just enable(x); if x a fcn, reevaluated each time
-    logbase.disableIf = () => {}
-
-    // log/info/debug, error/warning/warn
-    //def('info', createLogger(log, 'infox'));
-
-    // are .info .error .warning separate streams? so in separate files?
-    // separate substream? (what does this mean?)
-    // or same stream but with indicator?
-
-
-    def('log', (...args) => (logbase({}, ...args), logger));
-    def('info', (...args) => (logbase({type: 'info'}, ...args), logger) );
-    def('warning', (...args) => (logbase({type: 'warning'}, ...args), logger) );
-    def('error', (...args) => (logbase({type: 'error'}, ...args), logger) );
-
-
-    logbase.takeOverConsole = function() {
         // can/should only be done once by ???
         if (CONSOLE_OVERRIDE) {
-            // error: already taken over; do it again?
+            CONSOLE_LOG('SORRY, already overriden!')
         }
         else {
+            CONSOLE_LOG('CONSOLE redirected to ' + settings.appID + '/' + (streamName || settings.streamName))
+
             // can't actually replace 'console' but take over each [important] function
             CONSOLE_OVERRIDE = console;
 
@@ -188,15 +157,28 @@ function createLogger() {
             console.warn = ()=>{};
             console.debug = ()=>{};
         }
+
         return logger;
-    }
+    });
+
+    def('newStream', streamName => {
+        const pre = settings.streamName === 'stdout' ? '' : (settings.streamName + '.')
+        return createLogger().appID(settings.appID, pre + streamName);
+    })
+
+    logbase.enableIf = () => {}; // or just enable(x); if x a fcn, reevaluated each time
+    logbase.disableIf = () => {}
+
+    // are .info .error .warning separate streams? so in separate files?
+    // separate substream? (what does this mean?)
+    // or same stream but with indicator?
+
+    def('log', (...args) => (logbase({}, ...args), logger));
+    def('info', (...args) => (logbase({type: 'info'}, ...args), logger) );
+    def('warning', (...args) => (logbase({type: 'warning'}, ...args), logger) );
+    def('error', (...args) => (logbase({type: 'error'}, ...args), logger) );
 
     return logger;
-
-
-
-    //
-    // LOGGING: to be cleaned up
 
     // todo: better names: e.g. disable or enable or disableFor or enableFor
     // todo: filter for throwAway() and keepOnly() [e.g. only warning/errors]
@@ -224,14 +206,6 @@ function createLogger() {
         process.exit(exitCode);
     }
 
-    log.warning = function(...args) {
-        log('[WARNING]', ...args);    
-    }
-
-    log.error = function(...args) {
-        log('[ERROR]', ...args); // todo: log permanently somewhere
-    }
-
     log.warningWithTrace = function(...args) {
         showInLog(...args) && console.trace('[WARNING]', ...args);
     }
@@ -239,13 +213,8 @@ function createLogger() {
     log.errorWithTrace = function(...args) {
         showInLog(...args) && console.trace('[ERROR]', ...args); // todo: log permanently somewhere
     }
-
-    log.info = function(...args) {
-        log('[INFO]', ...args);    
-    }
-
-
 }
+
 
 const log = createLogger();
 
@@ -256,4 +225,6 @@ module.exports = {
 
     getLogDir,
     FileNotFound,
+    colorize,
+    redish,
 }
