@@ -1,24 +1,25 @@
 #!/usr/bin/env node
 
-// todo: option to simply dump everything so far (or a partial lead/tail)
-// todo: options to redump all or start from now (e.g. if restarting during the day)
-// todo: option to save logs for the day, week, always (e.g. yyyymmdd-type archives)
-// todo: specify custom dir for logs instead of default '~/.log0/logs/app-name'
-
 // don't display name if stdout (default main console)
 // when asking for a stream, display all SUBstreams also (e.g. parsing & parsing.subber)
 // - then that main name not displayed ('parsing') only subber
 
+// streamName... for all substreams; -streamName to not display it; [bash: can't use * or !]
+
 const wr = txt => process.stdout.write(txt); // shorthand
+
+// from: https://stackoverflow.com/a/30360821
+const setWindowTitle = title => wr(`\x1b]0;${title}\x07`); // x1B=27; x07=7
+
 let [nodeBinPath, log0AppPath, appID, ...streamNames] = process.argv;
 
-let tagAll = false, showTags = /[-]+(tags?|tagall)/i;
+let tagAll = false, showTags = /[+-]tags/i, tagDirective = t => t[0] === '+';
 if (showTags.test(appID)) {
-    tagAll = true;
+    tagAll = tagDirective(appID);
     appID = streamNames.shift();
 }
 else if (showTags.test(streamNames[0]))
-    tagAll = !!streamNames.shift();
+    tagAll = tagDirective(streamNames.shift());
 
 appID || process.exit(1,wr(`need app's name/identifier to view its running logs\n`));
 
@@ -28,28 +29,36 @@ const logDir = getLogDir(appID);
 
 fs.mkdirSync(logDir, { recursive: true }); // always
 
-DisplayRunningLogs(logDir, streamNames);
+let directives = [], numExplicit = 0, single = '';
+for (const sn of streamNames) {
+    const [, noDisplay, name, , displaySubs] = sn.match(/^([-]?)(((?![.]{3}).)+)([.]{3})?$/) || [];
+    noDisplay || (numExplicit++, single = (numExplicit === 1) ? (name + '.') : '');
+    directives.push({ applies: n => (n === name || (displaySubs && n.startsWith(name + '.'))), view: !noDisplay});
+}
 
-async function DisplayRunningLogs(logDir, streamNames) {
+const observeAll = numExplicit === 0, defaultDirective = {view: observeAll};
 
-    const observeAll = streamNames.length === 0,
-          observeSingle = streamNames.length === 1,
-          prefix = observeSingle ? streamNames[0].length + 1 : 0,
-          streams = {};
+const viewing = name => (directives.find(s => s.applies(name)) || defaultDirective).view;
 
-    const viewing = name => observeAll || streamNames.find(sn => sn === name || name.startsWith(sn + '.'));
+setWindowTitle(`${appID} log [${(observeAll ? 'ALL STREAMS' : streamNames.join(';'))}] - ${tagAll?'+tags':'-tags'}`);
 
-    function setStream(name) {
-        const file = logDir + '/' + name, {size:pos} = fs.statSync(file);
-        return streams[name] = {name, file, pos, viewing: viewing(name)};
-    }
+const streams = {};
 
-    fs.readdirSync(logDir).forEach(setStream);
+function setStream(name) {
+    const file = logDir + '/' + name, {size:pos} = fs.statSync(file);
+    return streams[name] = {name, file, pos};
+}
+
+fs.readdirSync(logDir).forEach(setStream);
+
+DisplayRunningLogs();
+
+async function DisplayRunningLogs() {
 
     fs.watch(logDir, async (eventType, filename) => {
         const stream = streams[filename] || setStream(filename);
         try {            
-            stream.viewing && await dumpNewEntries(stream);
+            viewing(stream.name) && await dumpNewEntries(stream);
         }
         catch(ex) {
             FileNotFound(ex) ? (stream.pos = 0) : wr(`${ex.message || ex.error || ex}\n`);
@@ -66,7 +75,7 @@ async function DisplayRunningLogs(logDir, streamNames) {
 
         // adjust displayed stream name (if needed)
         const displayName = tagAll ? stream.name 
-            : stream.name.substring(prefix).split(/[.]/).filter((n,i) => i !== 0 || n !== 'stdout').join('.');
+            : stream.name.substring(single.length).split(/[.]/).filter((n,i) => i !== 0 || n !== 'stdout').join('.');
         const tag = displayName ? `\n[${redish(displayName.toUpperCase())}] ` : '';
 
         return new Promise((resolve,reject) => {

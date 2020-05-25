@@ -3,13 +3,19 @@
 // ALL LOGGING is done to files
 // OPTION to ALSO go directly to console for 1 or more of the streams?
 
+// SHOULD DEFAULT to TAGALL: when many windows, hard to see what's what otherwise
+
 // todo: for a heavily used log, keep open stream instead of appending to it as one-offs
 // - need to know to close it when app exits (on error or otherwise)
 
 // DON'T FORGET (from ~/devx/log0):
-// - increment package.json.version
-// - push to github
-// - npm publish
+// 1- increment package.json.version
+// 2- make changes
+// 3- push to github
+// 4- npm publish
+// 5- goto 1
+
+// TODO: clean up files: can get VERY LARGE; by default delete/restart files on new runs
 
 
 const fs = require('fs'),
@@ -42,13 +48,17 @@ const esc = `\x1b`, red = 31, brightRedx = 91, brightRed = `1;31`, black = 40, r
 // used for util.inspect options
 const defaultUtilInspectOpts = {depth: 2, colors: true};
 function toDebugString(inspectOpts, ...args) { 
+
     // similar to what's displayed by console.log(...args)
     // based on: https://nodejs.org/api/util.html#util_util_inspect_object_options
+    
     // todo: COLORIZE undefined/null/empty-string?
+
+    // why not simply let util.inspect deal directly with each arg?
     return args.map(a => a === undefined ? '--undefined--' 
                        : a === null ? '--null--'
                        : a === '' ? "''"
-                       : typeof a === 'object' ? util.inspect(a, inspectOpts || defaultUtilInspectOpts) 
+                       : /object|function/.test(typeof a) ? util.inspect(a, inspectOpts || defaultUtilInspectOpts) 
                        : a).join(' ');
 }
 
@@ -76,16 +86,19 @@ let CONSOLE_OVERRIDE = false;
 
 function createLogger() {
 
-    const settings = {}; // primary options for this logger (can be overriden below)
+    const settings = {
+        consoleOpts: {depth: 2, colors: true},
+    }; // primary options for this logger (can be overriden below)
 
     function logger(...args) {
         logbase({}, ...args);
+        return logger;
     }
 
     function logbase(addtl, ...args) { // need level/type/severity: info, debug, warn/warning, error, critical
 
-        const {fileFullName, fsStream, appID, streamName } = settings;
-        const {type,consoleOpts} = addtl; // call-specific options
+        const {fileFullName, fsStream, appID, streamName, consoleOpts } = settings;
+        const {type} = addtl; // call-specific options
 
         const logEntry = toDebugString(consoleOpts, ...args);
 
@@ -106,30 +119,54 @@ function createLogger() {
             enumerable: false,
             configurable: false,
             writable: false,
-            value: method//.bind(loggerThis)
+            value: method
     });
 
-    def('colorize', flag => {
+    def('colorizeInFiles', (flag = true) => {
+        settings.consoleOpts.colors = flag;
         return logger;
     });
 
     def('separateLevel', (...levels) => {
-        // e.g. error & warning in own file
+        return logger;
+    });
+
+    def('severity', levels => {
+        return logger;
+    });
+
+    def('keepOpen', flag => {
+        
+        // can keep log file open as a stream for higher performance logging (e.g. high volume)
+
+        if (flag) {
+            if (!settings.fsStream) {
+                settings.fsStream = fs.createWriteStream(settings.fileFullName, { flags: 'a', encoding: 'utf8' });
+                process.on('exit', closeMe);        
+            }
+        }
+        else { 
+            closeMe(); // ...if open
+        }
+
+        function closeme() {
+            if (settings.fsStream) {
+                settings.fsStream.close();
+                settings.fsStream = null;
+            }
+        }
 
         return logger;
     });
 
-    def('severity', levels=> {
-        return logger;
-    });
+    def('appID', function(appIDorFileName, streamName = 'stdout') {
 
-    def('appID', function(appIDx, streamName = 'stdout') {
         // must be called to redirect output to logfiles
         // until called, all output is as per console.log
 
         // make sure not already set: if so, create a new sub logger?
 
-        const appID = appIDx // may be a filename so extract from it
+        const appID = appIDorFileName // may be a filename so extract from it
             .replace(/[/]index[.]js$/,'') // remove trailing /index.js (if any)
             .replace(/[.]js$/,'') // remove trailing .js
             .replace(/.*?[/]([^/]+)$/, '$1'); // keep last part of the path (i.e. /no/no/no/no/yes)
@@ -137,7 +174,6 @@ function createLogger() {
 
         settings.appID = appID;
         settings.streamName = streamName;
-
         settings.fileFullName = genLogFileFullName(appID, streamName);
 
         return logger;
@@ -156,12 +192,13 @@ function createLogger() {
             // can't actually replace 'console' but take over each [important] function
             CONSOLE_OVERRIDE = console;
 
-            console.log = ()=>{};
-            console.error = ()=>{};
-            console.info = ()=>{};
-            console.warning = ()=>{};
-            console.warn = ()=>{};
-            console.debug = ()=>{};
+            // console.X do NOT return  anything so must adhere to that
+            console.log = (...args) => { logger(...args); }
+            console.error = (...args) => { logger.error(...args); }
+            console.info = (...args) => { logger.info(...args); }
+            console.warning = (...args) => { logger.warning(...args); }
+            console.warn = (...args) => { logger.warning(...args); }
+            console.debug = (...args) => { logger.debug(...args); }
         }
 
         return logger;
@@ -183,6 +220,7 @@ function createLogger() {
     def('info', (...args) => (logbase({type: 'info'}, ...args), logger) );
     def('warning', (...args) => (logbase({type: 'warning'}, ...args), logger) );
     def('error', (...args) => (logbase({type: 'error'}, ...args), logger) );
+    def('debug', (...args) => (logbase({type: 'debug'}, ...args), logger) );
 
     return logger;
 
