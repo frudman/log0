@@ -56,6 +56,7 @@ process.on('exit', (...args) => {
     // - so, when opening a stream, set process.on(exit) to close it
     CONSOLE_LOG('app exiting', args);
 })
+// see: https://stackoverflow.com/questions/14031763/doing-a-cleanup-action-just-before-node-js-exits
 // process.on('uncaughtException', (...args) => {
 //     CONSOLE_LOG('app exiting: UNCAUGHT EXCEPTION', args);
 
