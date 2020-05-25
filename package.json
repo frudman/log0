@@ -1,6 +1,6 @@
 {
   "name": "log0",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "a minimal (micro) logger to replace console.log based server-side development",
   "bin":{
     "log0": "viewer.js"

@@ -6,6 +6,11 @@
 // todo: for a heavily used log, keep open stream instead of appending to it as one-offs
 // - need to know to close it when app exits (on error or otherwise)
 
+// DON'T FORGET (from ~/devx/log0):
+// - increment package.json.version
+// - push to github
+// - npm publish
+
 
 const fs = require('fs'),
       fsp = fs.promises;
