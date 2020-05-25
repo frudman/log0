@@ -15,7 +15,9 @@
 // 4- npm publish
 // 5- goto 1
 
-// TODO: clean up files: can get VERY LARGE; by default delete/restart files on new runs
+// TODO: clean up files: can get VERY LARGE; maybe by default delete/restart files on new runs
+// TODO: as logging, reality check that file not TOO BIG, else delete and start over
+//       - maybe set max of 10MB (just keep track of added bytes)
 
 
 const fs = require('fs'),
@@ -44,6 +46,10 @@ const util = require('util'),
 const esc = `\x1b`, red = 31, brightRedx = 91, brightRed = `1;31`, black = 40, reset = 0,
       colorize = (clr,txt) => txt ? `${esc}[${clr}m${txt}${esc}[${reset}m` : `${esc}[${clr}m`,
       redish = txt => colorize(brightRed, txt);
+
+// from: https://stackoverflow.com/a/30360821
+const setWindowTitle = title => wr(`${esc}]0;${title}\x07`);
+
 
 // used for util.inspect options
 const defaultUtilInspectOpts = {depth: 2, colors: true};
@@ -271,4 +277,5 @@ module.exports = {
     FileNotFound,
     colorize,
     redish,
+    setWindowTitle,
 }

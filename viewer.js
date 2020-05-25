@@ -8,23 +8,20 @@
 
 const wr = txt => process.stdout.write(txt); // shorthand
 
-// from: https://stackoverflow.com/a/30360821
-const setWindowTitle = title => wr(`\x1b]0;${title}\x07`); // x1B=27; x07=7
-
 let [nodeBinPath, log0AppPath, appID, ...streamNames] = process.argv;
 
-let tagAll = false, showTags = /[+-]tags/i, tagDirective = t => t[0] === '+';
-if (showTags.test(appID)) {
+let tagAll = false, isTagDirective = d => /^[+-]tags$/i.test(d), tagDirective = t => t[0] === '+';
+if (isTagDirective(appID)) {
     tagAll = tagDirective(appID);
     appID = streamNames.shift();
 }
-else if (showTags.test(streamNames[0]))
+else if (isTagDirective(streamNames[0]))
     tagAll = tagDirective(streamNames.shift());
 
 appID || process.exit(1,wr(`need app's name/identifier to view its running logs\n`));
 
 const fs = require('fs');
-const { getLogDir, FileNotFound, redish } = require('./index.js');
+const { getLogDir, FileNotFound, redish, setWindowTitle } = require('./index.js');
 const logDir = getLogDir(appID);
 
 fs.mkdirSync(logDir, { recursive: true }); // always
