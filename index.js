@@ -1,9 +1,10 @@
 "use strict"; // keep until es-moduled
 
-// ALL LOGGING is done to files
-// OPTION to ALSO go directly to console for 1 or more of the streams?
+// DEFAULT LOG is done to main console
+// ALL OTHER LOGGING (i.e. .newStream) is done to files
+// ALL log files DELETED on start (else would grow to LARGE SIZES quickly)
 
-// SHOULD DEFAULT to TAGALL: when many windows, hard to see what's what otherwise
+// OPTION to ALSO go directly to console for 1 or more of the streams?
 
 // todo: for a heavily used log, keep open stream instead of appending to it as one-offs
 // - need to know to close it when app exits (on error or otherwise)
@@ -68,6 +69,13 @@ function toDebugString(inspectOpts, ...args) {
                        : a).join(' ');
 }
 
+function toUnicode(str) {
+    return (str || '').split('')
+        .map(c => c.charCodeAt().toString(16).toUpperCase().padStart(4, '0'))
+        .reduce((unicode,c) => unicode += `\\u${c}`, '');
+}
+
+
 // base console might be changed, taken over so keep original safe
 const CONSOLE_LOG = console.log.bind(console);
 
@@ -127,6 +135,8 @@ function createLogger() {
             writable: false,
             value: method
     });
+
+
 
     def('colorizeInFiles', (flag = true) => {
         settings.consoleOpts.colors = flag;
@@ -265,7 +275,6 @@ function createLogger() {
     }
 }
 
-
 const log = createLogger();
 
 module.exports = {
@@ -278,4 +287,7 @@ module.exports = {
     colorize,
     redish,
     setWindowTitle,
+
+    toDebugString,
+    toUnicode,
 }
