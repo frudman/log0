@@ -1,24 +1,31 @@
 #!/usr/bin/env node
 
-// don't display name if stdout (default main console)
-// when asking for a stream, display all SUBstreams also (e.g. parsing & parsing.subber)
-// - then that main name not displayed ('parsing') only subber
-
-// streamName... for all substreams; -streamName to not display it; [bash: can't use * or !]
-
-const wr = txt => process.stdout.write(txt); // shorthand
+/* usage: log0 [(+|-)tags] [0 or more (blank separated) stream directives]
+    where +tags (default) to prefix all lines with respective stream name
+          -tags to prefix with stream name only if not explicitly specified 
+                in command line or not 'stdout'
+          [stream directives] (when present) have format: [+|-]name[...]
+            if no directives, all streams are displayed live
+            if any + directive(s), no other stream displayed
+            if only - directive(s), all other streams displayed
+            where + to display a stream (default)
+                  - to NOT display that stream (use when displaying ALL other streams)
+            also: ... (trailing) to display that stream AND all its .substreams
+*/
 
 let [nodeBinPath, log0AppPath, appID, ...streamNames] = process.argv;
 
-let tagAll = false, isTagDirective = d => /^[+-]tags$/i.test(d), tagDirective = t => t[0] === '+';
-if (isTagDirective(appID)) {
+let tagAll = true, isTagDirective = d => /^[+-]tags$/i.test(d), tagDirective = t => t[0] === '+';
+if (isTagDirective(appID)) { // used form `log0 +tags appID`
     tagAll = tagDirective(appID);
     appID = streamNames.shift();
 }
 else if (isTagDirective(streamNames[0]))
-    tagAll = tagDirective(streamNames.shift());
+    tagAll = tagDirective(streamNames.shift()); // used form `log0 appID +tags`
 
-appID || process.exit(1,wr(`need app's name/identifier to view its running logs\n`));
+const wr = txt => process.stdout.write(txt); // shorthand for below
+    
+appID || process.exit(1, wr(`need app's name/identifier to view its running logs\n`));
 
 const fs = require('fs');
 const { getLogDir, FileNotFound, redish, setWindowTitle } = require('./index.js');
@@ -26,20 +33,17 @@ const logDir = getLogDir(appID);
 
 fs.mkdirSync(logDir, { recursive: true }); // always
 
-let directives = [], numExplicit = 0, single = '';
+let directives = [], explicitShow = 0, single = '', fyi = [];
 for (const sn of streamNames) {
-    const [, noDisplay, name, , displaySubs] = sn.match(/^([-]?)(((?![.]{3}).)+)([.]{3})?$/) || [];
-    noDisplay || (numExplicit++, single = (numExplicit === 1) ? (name + '.') : '');
-    directives.push({ applies: n => (n === name || (displaySubs && n.startsWith(name + '.'))), view: !noDisplay});
+    const [, f, name, , displaySubs] = sn.match(/^([+-]?)(((?![.]{3}).)+)([.]{3})?$/) || [];
+    (f === '-') || (single = (++explicitShow === 1) ? (name + '.') : '');
+    fyi.push((f || '+') + name + (displaySubs ? '*' : ''));
+    directives.push({ applies: n => (n === name || (displaySubs && n.startsWith(name + '.'))), view: f !== '-'});
 }
 
-const observeAll = numExplicit === 0, defaultDirective = {view: observeAll};
+const streams = {}, showAll = explicitShow === 0, defaultDirective = {view: showAll};
 
-const viewing = name => (directives.find(s => s.applies(name)) || defaultDirective).view;
-
-setWindowTitle(`${appID} log [${(observeAll ? 'ALL STREAMS' : streamNames.join(';'))}] - ${tagAll?'+tags':'-tags'}`);
-
-const streams = {};
+const viewing = name => (directives.find(d => d.applies(name)) || defaultDirective).view;
 
 function setStream(name) {
     const file = logDir + '/' + name, {size:pos} = fs.statSync(file);
@@ -48,9 +52,11 @@ function setStream(name) {
 
 fs.readdirSync(logDir).forEach(setStream);
 
-DisplayRunningLogs();
+DisplayRunningLogs(`${appID} live logs [${(showAll ? 'ALL STREAMS' : fyi.join(';'))}] (${tagAll?'+':'-'}tags)`);
 
-async function DisplayRunningLogs() {
+async function DisplayRunningLogs(title) {
+
+    setWindowTitle(title);
 
     fs.watch(logDir, async (eventType, filename) => {
         const stream = streams[filename] || setStream(filename);
@@ -66,11 +72,12 @@ async function DisplayRunningLogs() {
 
         // issue (not worth worrying about)
         // if file is deleted by user, it will be correctly monitored when/if re-created
-        // but, if file is trimmed (i.e. its length is reduced, as in rewriting its content),
+        // (because file watcher thinks of it as a new file [different inode id])
+        // BUT, if file is trimmed (i.e. its length is reduced, as in rewriting its content),
         // the new content will NOT begin to display until its new length becomes greater than
         // what it was before (since stream.pos will be larger than the new content, initially)
+        // (all because file watcher sees SAME file since inode stays the same)
 
-        // adjust displayed stream name (if needed)
         const displayName = tagAll ? stream.name 
             : stream.name.substring(single.length).split(/[.]/).filter((n,i) => i !== 0 || n !== 'stdout').join('.');
         const tag = displayName ? `\n[${redish(displayName.toUpperCase())}] ` : '';

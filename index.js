@@ -48,7 +48,7 @@ const esc = `\x1b`, red = 31, brightRedx = 91, brightRed = `1;31`, black = 40, r
       redish = txt => colorize(brightRed, txt);
 
 // from: https://stackoverflow.com/a/30360821
-const setWindowTitle = title => wr(`${esc}]0;${title}\x07`);
+const setWindowTitle = title => process.stdout.write(`${esc}]0;${title}\x07`);
 
 
 // used for util.inspect options
