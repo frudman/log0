@@ -11,6 +11,16 @@
             where + to display a stream (default)
                   - to NOT display that stream (use when displaying ALL other streams)
             also: ... (trailing) to display that stream AND all its .substreams
+
+    CAN USE WILDCARDS!!! (all are case insensitive)
+    - since bash (i.e. linux shells) treat '*' as a shell construct,
+      we use '...' as the wildcard characters
+    SO, for example, can do this:
+        log0 app-name ...abcx      [see all streams that end with 'abcx']
+        log0 app-name abcx...      [see all streams that start with 'abcx']
+        log0 app-name ...xyz...    [see all streams that contain 'xyz' in their name]
+        log0 app-name +...xyz...   [same as above]
+        log0 app-name -...xyz...   [do NOT view any stream that contains xyz in its name]
 */
 
 let [nodeBinPath, log0AppPath, appID, ...streamNames] = process.argv;
@@ -35,10 +45,18 @@ fs.mkdirSync(logDir, { recursive: true }); // always
 
 let directives = [], explicitShow = 0, single = '', fyi = [];
 for (const sn of streamNames) {
-    const [, f, name, , displaySubs] = sn.match(/^([+-]?)(((?![.]{3}).)+)([.]{3})?$/) || [];
+    //const [, f, name, , displaySubs] = sn.match(/^([+-]?)(((?![.]{3}).)+)([.]{3})?$/) || [];
+    const [, f, name, , displaySubs] = sn.match(/^([+-]?)(.*)$/) || [];
+
+    // treat '...' as a wildcard (since can't use '*' on bash line [interpreted by bash as something else])
+    const re = new RegExp('^' + name.replace(/[.]{3,}/g, '(.*)') + '$', "i");
+    const applies = n => re.test(n);
+
     (f === '-') || (single = (++explicitShow === 1) ? (name + '.') : '');
-    fyi.push((f || '+') + name + (displaySubs ? '*' : ''));
-    directives.push({ applies: n => (n === name || (displaySubs && n.startsWith(name + '.'))), view: f !== '-'});
+    //fyi.push((f || '+') + name + (displaySubs ? '*' : ''));
+    fyi.push((f || '+') + re);//name + (displaySubs ? '*' : ''));
+    //directives.push({ applies: n => (n === name || (displaySubs && n.startsWith(name + '.'))), view: f !== '-'});
+    directives.push({ applies, view: f !== '-'});
 }
 
 const streams = {}, showAll = explicitShow === 0, defaultDirective = {view: showAll};
