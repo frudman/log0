@@ -69,11 +69,11 @@ class TerminalWindow {
         // Default CTRL-C Trap
         stdin.on('data', kbdInp => { // give a default bailout
             if (kbdInp === TerminalWindow.ctrl.c) {
+                this.clearToEndOfWindow();
                 if (this.#ctrlActions.length === 0)
                     console.log('\nUSER BREAK (default handler)');
-                else
-                    while (this.#ctrlActions.length)
-                        this.#ctrlActions.shift()(); // NOT ASYNC
+                else while (this.#ctrlActions.length)
+                    this.#ctrlActions.shift()(); // NOT ASYNC
                 process.exit(0);
             }
         });
@@ -109,7 +109,7 @@ class TerminalWindow {
     clearLine() { this.stdout.clearLine(0); return this; }
     clearToEndOfLine() { this.stdout.clearLine(1); return this; }
     clearToEndOfWindow() { this.stdout.clearScreenDown(); return this; }
-    
+
     onResize(action) { this.stdout.on('resize', action); return this; }
 
     windowInfo() { 

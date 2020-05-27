@@ -100,14 +100,41 @@ let CONSOLE_OVERRIDE = false;
 
 function createLogger() {
 
-    const settings = {
+    // primary options for this logger (can be overriden below)
+    const settings = { 
         consoleOpts: {depth: 2, colors: true},
-    }; // primary options for this logger (can be overriden below)
+    }; 
 
     function logger(...args) {
         logbase({}, ...args);
         return logger;
     }
+
+    // TODO: VERY WEAK SOLUTION; need something more robust
+    // todo: make max size a user-defined setting
+    const monitoredFile = {};
+    const MAX_LOG_SIZE_IN_MB = 10;
+    const MAX_LOG_SIZE = MAX_LOG_SIZE_IN_MB * 1024 * 1024; // in bytes
+    function recycle(file, newAmount) {
+        let info = monitoredFile[file];
+        if (!info) {
+            try {
+                info = monitoredFile[file] = { size: fs.statSync(file).size }
+            }
+            catch(ex) { // for now, just assume file not created yet
+                info = monitoredFile[file] = { size: 0 }
+            }
+        }
+        info.size += newAmount;
+        if (info.size > MAX_LOG_SIZE) {
+            fs.unlinkSync(file); // do NOT simply overwrite else viewer won't detect
+            info.size = 0;
+        }
+    }
+
+    // MUST MUST ALLOW to specify if log/stream is SYNC or not: matters for fast logging 
+    // where order of entries matters (else some later entries may end up ahead of earlier ones)
+    const useSyncMethod = true; // TODO: make as a setting (AND TEST if/when using async/interweaved)
 
     function logbase(addtl, ...args) { // need level/type/severity: info, debug, warn/warning, error, critical
 
@@ -115,14 +142,22 @@ function createLogger() {
         const {type} = addtl; // call-specific options
 
         const logEntry = toDebugString(consoleOpts, ...args);
+    
 
-        if (fsStream) {
-            fsStream.write('\n' + logEntry, 'utf8');
+        if (fsStream) { // eventually (for better performance for high-volume-high-speed logs)
+            throw new Error(`NOT IMPL`); 
+            //fsStream.write('\n' + logEntry, 'utf8');
+            // also ongoing recycling: easier here: could just write back to front of file?
+            // - but, need to indicate that file changed for file watchers (somehow)
         }
         else if (fileFullName) {
-            fs.appendFile(fileFullName, '\n' + logEntry, err => {
-                err && CONSOLE_LOG('error writing to log', fileFullName, logEntry, err);
-            });
+            recycle(fileFullName, logEntry.length + 1);
+            if (useSyncMethod)
+                fs.appendFileSync(fileFullName, '\n' + logEntry);
+            else
+                fs.appendFile(fileFullName, '\n' + logEntry, err => {
+                    err && CONSOLE_LOG('error writing to log', fileFullName, logEntry, err);
+                });
         }
         else {
             CONSOLE_LOG(`\n[PLAIN-LOG:${appID||'--no-app-id--'}.${streamName||'--no-stream-name--'}]${type?`/${type}`:''}`, logEntry)
