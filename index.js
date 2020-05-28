@@ -143,10 +143,6 @@ function setAppID(appID) {
     }
 }
 
-// base for all: stdout (visible as file name only)
-const defBaseLogName = '';//stdout'; // must match regexp below
-
-//function createLogger({name = defBaseLogName, parent} = {}) {
 function createLogger({name, parent, lvl = 0} = {}) {
 
     // reserved log props: cannot be used as stream names
@@ -157,18 +153,17 @@ function createLogger({name, parent, lvl = 0} = {}) {
 
     const streams = {}; // substreams of this logger
 
+    const myDisplayedName = () => lvl === 0 ? singletonAppID : parent.name + '.' + name;
+
     let fileFullName;
     onAppIDChanged(newAppID => {
-        fileFullName = lvl === 0 ? genLogFileFullName(newAppID)
+        fileFullName = lvl === 0 ? genLogFileFullName(newAppID) // becomes new root dir for streams
                      : lvl === 1 ? (parent.filename + '/' + name) 
                                  : (parent.filename + '.' + name);
-        // fileFullName = name ? (parent.filename + (lvl === 1 ? '/' : '.') + name) 
-        //     : genLogFileFullName(newAppID); // this is the root of the logs
     })
 
     // proxy target (must be a function)
-    // also used to keep user's custom props
-    function unusedByLog(){};
+    function unusedByLog(){}; // also used to keep user's custom props
 
     function actualLogger(...args) {
 
@@ -181,7 +176,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
         // }
 
         if (enabled) {
-            if (lvl > 0) {//name) {
+            if (lvl > 0) {
                 const logEntry = toDebugString(consoleOptions, ...args);
 
                 CONSOLE_LOG('['+fileFullName+'] -- ', logEntry);
@@ -195,30 +190,15 @@ function createLogger({name, parent, lvl = 0} = {}) {
                 //         err && CONSOLE_LOG('error writing to log', fileFullName, logEntry, err);
                 //     });
             }
-            else {
+            else { 
+                // root log ALWAYS writes to app's main/primary console
                 CONSOLE_LOG("***", ...args);
-                // const t = myqqDisplayedName(true).toUpperCase();
-                // t ? CONSOLE_LOG(t, ...args) : CONSOLE_LOG(...args);
             }
         }
 
         return loggerProxy; // important
     }
 
-    function myDisplayedName(squared = false) {
-        //const {name, parent, appID} = localSettings;
-        const nm = parent ? name : name === defBaseLogName ? '' : name;
-
-        const squareMe = x => squared ? `[${x}]` : x;
-
-        if (parent) 
-            return squareMe(`${parent.name}.${name}`);
-
-        return '';
-
-        //return appID ? squareMe(appID + (nm ? `.${nm}` : ``)) : '';
-        return singletonAppID === 'log0' ? '' : squareMe(singletonAppID + (nm ? `.${nm}` : ``));
-    }
 
     const setters = {
         setApp, // most important
@@ -249,28 +229,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
             .replace(/\s+/g, '-') // remove blank spaces
             .replace(/[a-z][A-Z]/g, m => m[0] + '-' + m[1].toLowerCase()); // camel to dash
 
-        // make sure not already set: if so, create a new sub logger?
-
         setAppID(appID);
-
-        // // WALK BACK TO PARENT
-        // if (localSettings.parent)
-        //     return localSettings.parent.setApp(appIDorFileName);
-
-        // if ('appID' in localSettings) 
-        //     throw new Error('APP ID already set');
-        
-        // {//}.appID === defBaseAppID) {
-        
-        //     localSettings.appID = appID
-        //     localSettings.fileFullName = genLogFileFullName(appID, localSettings.name);
-
-        //     CONSOLE_LOG('created log:', localSettings.appID, localSettings.fileFullName);
-        // }
-        // // else {
-        // //     // log already set, can't chane mid-course (why not?)
-        // //     throw new Error('APP ID already set');
-        // // }
 
         return loggerProxy;
     }
@@ -298,7 +257,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
         get(target, prop) {
             if (prop === 'log') return actualLogger;
             if (prop === 'name') return myDisplayedName();
-            if (prop === 'filename') return fileFullName;//localSettings.fileFullName;// myFileName();
+            if (prop === 'filename') return fileFullName;
             if (prop === 'if') return (cond,...args) => iffer(true, cond, ...args);
             if (prop === 'ifNot') return (cond,...args) => iffer(false, cond, ...args);
 
@@ -310,14 +269,8 @@ function createLogger({name, parent, lvl = 0} = {}) {
             if (prop in unusedByLog) return unusedByLog[prop];
 
             // create new stream
-            // if (localSettings.parent || localSettings.appID) {
-                const streamName = prop.replace(/\s+/g,'-').replace(/[a-z][A-Z]/g, m => `${m[0]}-${m[1].toLowerCase()}`);
-                const subLogger = streams[prop] = createLogger({ name: streamName, parent: loggerProxy, lvl: lvl+1 });//, apper:localSettings.appID });
-                return subLogger;
-            // }
-            // else {
-            //     throw new Error(`must log0.setApp('app-name') before creating new stream '${prop}'`);
-            // }
+            const streamName = prop.replace(/\s+/g,'-').replace(/[a-z][A-Z]/g, m => `${m[0]}-${m[1].toLowerCase()}`);
+            return streams[prop] = createLogger({ name: streamName, parent: loggerProxy, lvl: lvl+1 });
         },
         set(target, prop, value) {
             unusedByLog[prop] = value;
@@ -332,36 +285,6 @@ function createLogger({name, parent, lvl = 0} = {}) {
     });
 
     return loggerProxy;
-
-
-
-    function xlogbase(addtl, ...args) { // need level/type/severity: info, debug, warn/warning, error, critical
-
-        const {fileFullName, fsStream, appID, streamName, consoleOpts } = settings;
-        const {type} = addtl; // call-specific options
-
-        const logEntry = toDebugString(consoleOpts, ...args);
-    
-
-        if (fsStream) { // eventually (for better performance for high-volume-high-speed logs)
-            throw new Error(`NOT IMPL`); 
-            //fsStream.write('\n' + logEntry, 'utf8');
-            // also ongoing recycling: easier here: could just write back to front of file?
-            // - but, need to indicate that file changed for file watchers (somehow)
-        }
-        else if (fileFullName) {
-            recycle(fileFullName, logEntry.length + 1);
-            if (useSyncMethod)
-                fs.appendFileSync(fileFullName, '\n' + logEntry);
-            else
-                fs.appendFile(fileFullName, '\n' + logEntry, err => {
-                    err && CONSOLE_LOG('error writing to log', fileFullName, logEntry, err);
-                });
-        }
-        else {
-            CONSOLE_LOG(`\n[PLAIN-LOG:${appID||'--no-app-id--'}.${streamName||'--no-stream-name--'}]${type?`/${type}`:''}`, logEntry)
-        }
-    }
 
     def('colorizeInFiles', (flag = true) => {
         settings.consoleOpts.colors = flag;
