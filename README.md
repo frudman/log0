@@ -5,6 +5,60 @@
 - SHOULD INSTALL this package as GLOBAL (-g) in order to use its viewer directly (i.e. `prompt:> log0 ...`)
 - else, can use `prompt:> npx log0 ...`
 
+## Logger Usage `import {log} from 'log0';`
+
+If no appID, use log0
+log() or log0() goto console always
+ALL OTHER go to streams: log.xyz()
+
+in other words:
+log(...) ALWAYS goes to main/primary console
+log.abc(...) NEVER goes to main/primary console: need log0 viewer (on another terminal window) to view it
+
+If setApp, do early on
+can only do this ONCE per runtime per app
+
+// log(...)     to log to .log0/logs/log0/stdout
+// log.xyz(...) to log to .log0/logs/log0/xyz
+// log.setApp('abc').log(...) to log to .log0/logs/abc/xyz
+// log.setApp('abc').xyz(...) to log to .log0/logs/abc/xyz
+
+// DEFAULT LOG is done to main console
+// ALL OTHER LOGGING (i.e. new streams) done to files: is that correct???
+
+// ALL log files recycled (deleted/restarted) after certain size (else would grow to LARGE SIZES quickly)
+
+// OPTION to ALSO go directly to console for 1 or more of the streams?
+
+
+## Viewer Usage `cmd> log0 ...`
+usage: log0 [[app=]app-name] [stream directive]*
+   where: live logs from 'app-name' are displayed
+              - 'app=' prefix optional if 'app-name' dir exists already
+              - if no app-name specified, 'log0' is used by default
+          can have 0 or more [stream directive]
+              - if no directives, all streams for app are displayed live
+              - each stream directive has format: [+|-]stream-name[...]
+                    '+' to display a stream (default so '+' optional)
+                    '-' to NOT display that stream (use when displaying any other streams)
+              - if any '+' directive(s), only those stream(s) are displayed
+              - if only '-' directive(s), all other streams displayed
+              - use ellipsis ('...') as wildcards to display streams whose names
+                  contain specific words (see below)
+
+    WILDCARDS in stream names:
+    - use '...' as a wildcard [instead of the more intuitive '*' because linux shells 
+      (e.g. bash, zsh) treat '*' as a shell construct and gobble it up]
+    - '...' can be used as prefix, suffix, or anywhere in between:
+    SO, for example, can do this:
+        log0 app-name ...abcx      [view streams that end with 'abcx']
+        log0 app-name abcx...      [view streams that start with 'abcx']
+        log0 app-name ...xyz...    [view streams that contain 'xyz' in their name]
+        log0 app-name +...xyz...   [same as above]
+        log0 app-name -...xyz...   [do NOT view any stream that contains xyz in its name]
+
+
+## Long Version
 
 logging means different things to different people: for production apps, logging is meant
     to record events as they happen for later analysis (esp large apps with cloud-based logging)

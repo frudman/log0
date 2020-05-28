@@ -1,20 +1,6 @@
 "use strict"; // keep until es-moduled
 
-
-// log(...)     to log to .log0/logs/log0/stdout
-// log.xyz(...) to log to .log0/logs/log0/xyz
-// log.setApp('abc').log(...) to log to .log0/logs/abc/xyz
-// log.setApp('abc').xyz(...) to log to .log0/logs/abc/xyz
-
-// DEFAULT LOG is done to main console
-// ALL OTHER LOGGING (i.e. new streams) done to files: is that correct???
-
-// ALL log files recycled (deleted/restarted) after certain size (else would grow to LARGE SIZES quickly)
-
-// OPTION to ALSO go directly to console for 1 or more of the streams?
-
-// todo: for a heavily used log, keep open stream instead of appending to it as one-offs
-// - need to know to close it when app exits (on error or otherwise)
+// see README.md for usage
 
 // DON'T FORGET (from ~/devx/log0):
 // 1- increment package.json.version
@@ -23,19 +9,32 @@
 // 4- npm publish
 // 5- goto 1
 
-const fs = require('fs'),
-      fsp = fs.promises;
+// todo: for a heavily used log, keep open stream instead of appending to it as one-offs
+// - need to know to close it when app exits (on error or otherwise)
 
-const throwe = err => { throw new Error(err); }
-const FileNotFound = ex => ex.errno === 2 || /ENOENT/i.test(ex.code || '');
+// todo: circular file writing for cleaner recycling
+// - need to let viewer know front/back of now-circular file
 
-const LOG0_APP_DIR = '.log0/logs'; // e.g. `~/.log0/logs/app-name` for mac & linux
+// todo: MUST MUST ALLOW to specify if log/stream is SYNC or not: matters for fast logging 
+// - when order of entries matters (else some later entries may end up ahead of earlier ones)
+// - sync also ensures that all logging is complete before app end (e.g. if process.exit called
+//   somewhere else; without sync, could leave some log entries unwritten)
+//const useSyncMethod = true; // TODO: make as a setting (AND TEST if/when using async/interweaved)
+
+
+const fs = require('fs');
+
+// shorthand until https://github.com/tc39/proposal-throw-expressions
+const throwe = err => { throw (typeof err === 'string') ? new Error(err) : err; }
+
+// below as per: // https://nodejs.org/api/errors.html#errors_common_system_errors
+const FileNotFound = ex => ex.errno === 2 || /ENOENT/i.test(ex.code || ''); 
+
+const LOG0_APP_DIR = '.log0'; // e.g. `~/.log0/app-name` for mac & linux
 const userDir = require('os').homedir();
 const getLogDir = appID => `${userDir}/${LOG0_APP_DIR}/${appID}`;
-
-function genLogFileFullName(appID, streamName) {
-    return getLogDir(appID) + '/' + streamName;
-}
+//const genLogFileFullName = (appID, streamName) => streamName ? (getLogDir(appID) + '/' + streamName) : '';
+const genLogFileFullName = (appID, streamName) => getLogDir(appID) + (streamName ? ('/' + streamName) : '');
 
 // based on: https://stackoverflow.com/a/28397970/11256689
 // - https://nodejs.org/api/util.html#util_util_inspect_object_options
@@ -77,14 +76,14 @@ function toUnicode(str) {
         .reduce((unicode,c) => unicode += `\\u${c}`, '');
 }
 
-// base console might be changed, taken over so keep original safe
+// base console might be changed (i.e. if taken over) so keep original safe
 const CONSOLE_LOG = console.log.bind(console);
 
 // only 1 console so singleton for all loggers
 let CONSOLE_OVERRIDE = false;
 
 process.on('exit', (...args) => {
-    // called NOMATTER WHAT (even if unhandled exceptions/rejections)
+    // called NO MATTER WHAT (even if unhandled exceptions/rejections)
     // good place to close open streams (if any)
     // - so, when opening a stream, set process.on(exit) to close it
     CONSOLE_LOG('app exiting', args);
@@ -99,6 +98,11 @@ process.on('exit', (...args) => {
 //     CONSOLE_LOG('app exiting: UNHANDLED REJECTION', args);    
 // })
 
+function logfileApi(filename, maxSizeInMB = 10) {
+    return {
+        wr
+    }
+}
 
 // TODO: VERY WEAK SOLUTION; need something more robust
 // todo: make max size a user-defined setting
@@ -122,38 +126,45 @@ function recycle(file, newAmount) {
     }
 }
 
-// MUST MUST ALLOW to specify if log/stream is SYNC or not: matters for fast logging 
-// where order of entries matters (else some later entries may end up ahead of earlier ones)
-// - sync also ensures that all logging is complete before app end (e.g. if process.exit called
-//   somewhere else; without sync, could leave some log entries unwritten)
-//const useSyncMethod = true; // TODO: make as a setting (AND TEST if/when using async/interweaved)
+// can only have one per app & can't change it after
+let singletonAppID = 'log0', listeners = [];
+const onAppIDChanged = action => { action(singletonAppID); listeners.push(action); }
+function setAppID(appID) {
+    if (singletonAppID === 'log0') {
+        CONSOLE_LOG('Setting app id to', appID);
+        singletonAppID = appID;
+        while (listeners.length)
+            listeners.shift()(appID);
+    }
+    else if (appID !== singletonAppID) {
+        // only allow appID to be set once (by presumably controlling app) else other
+        // 3rd party modules could change it midstream
+        throw new Error(`App ID already set (to /${singletonAppID}) - cannot be changed (to /${appID})`)
+    }
+}
 
+// base for all: stdout (visible as file name only)
+const defBaseLogName = '';//stdout'; // must match regexp below
 
+//function createLogger({name = defBaseLogName, parent} = {}) {
+function createLogger({name, parent, lvl = 0} = {}) {
 
-function createLogger(initSettings) {
-
-    // builtin log props, invalid as stream names
+    // reserved log props: cannot be used as stream names
     //    log | name | filename | if | ifNot | set
 
-    // base for all: stdout (visible as file name only)
-    const defBaseLogName = 'stdout'; // must match regexp below
+    let useSyncMethod = true;
+    let consoleOptions = defaultUtilInspectOpts;
 
     const streams = {}; // substreams of this logger
 
-    let localSettings = Object.assign({ 
-        name: defBaseLogName, 
-        useSyncMethod: true,
-        consoleOptions: defaultUtilInspectOpts,
-    }, initSettings);
-
-    // need appIDx & fullpath
-    if (localSettings.parent) { // not the top-level stream (stdout)
-        const fp = localSettings.parent.filename.replace(/stdout$/, '');
-        localSettings.fileFullName = (fp.endsWith('/') ? fp : `${fp}.`) + localSettings.name;
-        //CONSOLE_LOG('QQ',  localSettings.fileFullName);
-        //process.exit(12);
-    }
-
+    let fileFullName;
+    onAppIDChanged(newAppID => {
+        fileFullName = lvl === 0 ? genLogFileFullName(newAppID)
+                     : lvl === 1 ? (parent.filename + '/' + name) 
+                                 : (parent.filename + '.' + name);
+        // fileFullName = name ? (parent.filename + (lvl === 1 ? '/' : '.') + name) 
+        //     : genLogFileFullName(newAppID); // this is the root of the logs
+    })
 
     // proxy target (must be a function)
     // also used to keep user's custom props
@@ -161,35 +172,33 @@ function createLogger(initSettings) {
 
     function actualLogger(...args) {
 
-        // if appID not set goto console.log
-
         let enabled = true;
-        if ('ifCond' in localSettings) {
-            const {ifCond} = localSettings;
-            enabled = ifCond === undefined ? true 
-                : typeof ifCond === 'function' ? ifCond(...args)
-                : !!ifCond;
-        }
-
-        // but filename MUST include stdout IF no explicit stream name
+        // if ('ifCond' in localSettings) {
+        //     const {ifCond} = localSettings;
+        //     enabled = ifCond === undefined ? true 
+        //         : typeof ifCond === 'function' ? ifCond(...args)
+        //         : !!ifCond;
+        // }
 
         if (enabled) {
-            const {fileFullName, consoleOptions, useSyncMethod} = localSettings;
-            if (fileFullName) {
+            if (lvl > 0) {//name) {
                 const logEntry = toDebugString(consoleOptions, ...args);
-                
-                recycle(fileFullName, logEntry.length + 1);
 
-                if (useSyncMethod)
-                    fs.appendFileSync(fileFullName, '\n' + logEntry);
-                else
-                    fs.appendFile(fileFullName, '\n' + logEntry, err => {
-                        err && CONSOLE_LOG('error writing to log', fileFullName, logEntry, err);
-                    });
+                CONSOLE_LOG('['+fileFullName+'] -- ', logEntry);
+                
+                // recycle(fileFullName, logEntry.length + 1);
+
+                // if (useSyncMethod)
+                //     fs.appendFileSync(fileFullName, '\n' + logEntry);
+                // else
+                //     fs.appendFile(fileFullName, '\n' + logEntry, err => {
+                //         err && CONSOLE_LOG('error writing to log', fileFullName, logEntry, err);
+                //     });
             }
             else {
-                const t = myDisplayedName(true).toUpperCase();
-                t ? CONSOLE_LOG(t, ...args) : CONSOLE_LOG(...args);
+                CONSOLE_LOG("***", ...args);
+                // const t = myqqDisplayedName(true).toUpperCase();
+                // t ? CONSOLE_LOG(t, ...args) : CONSOLE_LOG(...args);
             }
         }
 
@@ -197,7 +206,7 @@ function createLogger(initSettings) {
     }
 
     function myDisplayedName(squared = false) {
-        const {name, parent, appID} = localSettings;
+        //const {name, parent, appID} = localSettings;
         const nm = parent ? name : name === defBaseLogName ? '' : name;
 
         const squareMe = x => squared ? `[${x}]` : x;
@@ -205,11 +214,10 @@ function createLogger(initSettings) {
         if (parent) 
             return squareMe(`${parent.name}.${name}`);
 
-        return appID ? squareMe(appID + (nm ? `.${nm}` : ``)) : '';
-    }
+        return '';
 
-    function myFileName() {
-
+        //return appID ? squareMe(appID + (nm ? `.${nm}` : ``)) : '';
+        return singletonAppID === 'log0' ? '' : squareMe(singletonAppID + (nm ? `.${nm}` : ``));
     }
 
     const setters = {
@@ -234,32 +242,35 @@ function createLogger(initSettings) {
 
     function setApp(appIDorFileName) {
 
+        const appID = (appIDorFileName + '')// may be a filename so extract from it
+            .replace(/[/]index[.]js$/,'') // remove trailing /index.js (if any)
+            .replace(/[.]js$/,'') // remove trailing .js
+            .replace(/.*?[/]([^/]+)$/, '$1') // keep last part of the path (i.e. /no/no/no/no/yes)
+            .replace(/\s+/g, '-') // remove blank spaces
+            .replace(/[a-z][A-Z]/g, m => m[0] + '-' + m[1].toLowerCase()); // camel to dash
+
         // make sure not already set: if so, create a new sub logger?
 
-        // WALK BACK TO PARENT
-        if (localSettings.parent)
-            return localSettings.parent.setApp(appIDorFileName);
+        setAppID(appID);
 
-        if ('appID' in localSettings) 
-            throw new Error('APP ID already set');
-        
-        {//}.appID === defBaseAppID) {
-            const appID = (appIDorFileName + '')// may be a filename so extract from it
-                .replace(/[/]index[.]js$/,'') // remove trailing /index.js (if any)
-                .replace(/[.]js$/,'') // remove trailing .js
-                .replace(/.*?[/]([^/]+)$/, '$1') // keep last part of the path (i.e. /no/no/no/no/yes)
-                .replace(/\s+/g, '-') // remove blank spaces
-                .replace(/[a-z][A-Z]/g, m => m[0] + '-' + m[1].toLowerCase()); // camel to dash
-        
-            localSettings.appID = appID
-            localSettings.fileFullName = genLogFileFullName(appID, localSettings.name);
+        // // WALK BACK TO PARENT
+        // if (localSettings.parent)
+        //     return localSettings.parent.setApp(appIDorFileName);
 
-            CONSOLE_LOG('created log:', localSettings.appID, localSettings.fileFullName);
-        }
-        // else {
-        //     // log already set, can't chane mid-course (why not?)
+        // if ('appID' in localSettings) 
         //     throw new Error('APP ID already set');
+        
+        // {//}.appID === defBaseAppID) {
+        
+        //     localSettings.appID = appID
+        //     localSettings.fileFullName = genLogFileFullName(appID, localSettings.name);
+
+        //     CONSOLE_LOG('created log:', localSettings.appID, localSettings.fileFullName);
         // }
+        // // else {
+        // //     // log already set, can't chane mid-course (why not?)
+        // //     throw new Error('APP ID already set');
+        // // }
 
         return loggerProxy;
     }
@@ -276,10 +287,9 @@ function createLogger(initSettings) {
         return loggerProxy;
     }
 
-    function iffer(yesOrNo, cond, ...args) {
+    function iffer(doOrDont, cond, ...args) {
         const test = typeof cond === 'function' ? cond(...args) : cond;
-        if (yesOrNo ? cond : !cond)
-            actualLogger(...args);
+        (doOrDont ? test : !test) && actualLogger(...args);
         return loggerProxy;
 
     }
@@ -288,7 +298,7 @@ function createLogger(initSettings) {
         get(target, prop) {
             if (prop === 'log') return actualLogger;
             if (prop === 'name') return myDisplayedName();
-            if (prop === 'filename') return localSettings.fileFullName;// myFileName();
+            if (prop === 'filename') return fileFullName;//localSettings.fileFullName;// myFileName();
             if (prop === 'if') return (cond,...args) => iffer(true, cond, ...args);
             if (prop === 'ifNot') return (cond,...args) => iffer(false, cond, ...args);
 
@@ -300,15 +310,14 @@ function createLogger(initSettings) {
             if (prop in unusedByLog) return unusedByLog[prop];
 
             // create new stream
-            if (localSettings.parent || localSettings.appID) {
+            // if (localSettings.parent || localSettings.appID) {
                 const streamName = prop.replace(/\s+/g,'-').replace(/[a-z][A-Z]/g, m => `${m[0]}-${m[1].toLowerCase()}`);
-                CONSOLE_LOG('creating new logging stream', streamName)
-                const subLogger = streams[prop] = createLogger({ name: streamName, parent: loggerProxy, apper:localSettings.appID });
+                const subLogger = streams[prop] = createLogger({ name: streamName, parent: loggerProxy, lvl: lvl+1 });//, apper:localSettings.appID });
                 return subLogger;
-            }
-            else {
-                throw new Error(`must log0.setApp('app-name') before creating new stream '${prop}'`);
-            }
+            // }
+            // else {
+            //     throw new Error(`must log0.setApp('app-name') before creating new stream '${prop}'`);
+            // }
         },
         set(target, prop, value) {
             unusedByLog[prop] = value;
@@ -425,19 +434,25 @@ function createLogger(initSettings) {
     }
 }
 
-const log = createLogger();
+const log0 = createLogger(); // 'root' logger
 
 module.exports = {
-    log,
-    log0: log,
-    consoleString,
+    log0,
+    log: log0, // alias for convenience
 
+    consoleString,
+    throwe,
+
+    // used by viewer
     getLogDir,
     FileNotFound,
+
+    // some useful tidbits
     colorize,
     redish,
     setWindowTitle,
 
+    // more useful tidbits
     toDebugString,
     toUnicode,
 }
