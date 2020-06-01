@@ -32,9 +32,14 @@ const FileNotFound = ex => ex.errno === 2 || /ENOENT/i.test(ex.code || '');
 
 const LOG0_APP_DIR = '.log0'; // e.g. `~/.log0/app-name` for mac & linux
 const userDir = require('os').homedir();
-const getLogDir = appID => `${userDir}/${LOG0_APP_DIR}/${appID}`;
-//const genLogFileFullName = (appID, streamName) => streamName ? (getLogDir(appID) + '/' + streamName) : '';
-const genLogFileFullName = (appID, streamName) => getLogDir(appID) + (streamName ? ('/' + streamName) : '');
+const getLogDir = appID => `${userDir}/${LOG0_APP_DIR}/${appID.toLowerCase()}`;
+
+// note: root is a dir (below): no file for "root log" (i.e. log(...)) because its output 
+// always goes to console (so app can always explicitly target its main console)
+const genLogFileFullName = (appID, streamName, lvl, parent) => 
+    lvl === 0 ? getLogDir(appID) // root dir for streams 
+              : (parent.filename + (lvl === 1 ? '/' : '.') + streamName.toLowerCase());
+
 
 // based on: https://stackoverflow.com/a/28397970/11256689
 // - https://nodejs.org/api/util.html#util_util_inspect_object_options
@@ -67,7 +72,7 @@ function toDebugString(inspectOpts, ...args) {
                        : a === null ? '--null--'
                        : a === '' ? "''"
                        : /object|function/.test(typeof a) ? util.inspect(a, inspectOpts || defaultUtilInspectOpts) 
-                       : a).join(' '); // symbols, primitives
+                       : a.toString()).join(' '); // symbols, primitives
 }
 
 function toUnicode(str) {
@@ -106,6 +111,8 @@ function logfileApi(filename, maxSizeInMB = 10) {
 
 // TODO: VERY WEAK SOLUTION; need something more robust
 // todo: make max size a user-defined setting
+// todo: split MAX_SIZE into multiple files then rotate those so always have a "tail"
+//       of prior log entries (as newly rotated file starts from 0 length)
 const monitoredFile = {};
 const MAX_LOG_SIZE_IN_MB = 10;
 const MAX_LOG_SIZE = MAX_LOG_SIZE_IN_MB * 1024 * 1024; // in bytes
@@ -126,60 +133,71 @@ function recycle(file, newAmount) {
     }
 }
 
-// can only have one per app & can't change it after
-let singletonAppID = 'log0', listeners = [];
+// can only have one per app & can't change it after (reason below)
+const defaultAppID = 'log0';
+let singletonAppID = defaultAppID, listeners = [];
 const onAppIDChanged = action => { action(singletonAppID); listeners.push(action); }
 function setAppID(appID) {
-    if (singletonAppID === 'log0') {
-        CONSOLE_LOG('Setting app id to', appID);
+    if (singletonAppID === defaultAppID) {
         singletonAppID = appID;
-        while (listeners.length)
-            listeners.shift()(appID);
+        listeners.forEach(listener => listener(appID));
     }
     else if (appID !== singletonAppID) {
         // only allow appID to be set once (by presumably controlling app) else other
         // 3rd party modules could change it midstream
-        throw new Error(`App ID already set (to /${singletonAppID}) - cannot be changed (to /${appID})`)
+        throw new Error(`App ID already set to /${singletonAppID} (cannot be changed to /${appID})`)
     }
 }
+
+const streamNameProp = Symbol('stream name'); // symbol to keep internal
 
 function createLogger({name, parent, lvl = 0} = {}) {
 
     // reserved log props: cannot be used as stream names
-    //    log | name | filename | if | ifNot | set
+    //    log | filename | if | set
+    // - but ok to use variants (e.g. IF or Log): stream/filenames will still be lowercase
 
-    let useSyncMethod = true;
+    // 2 ways to control log entries:
+    // - setEnabled (or .if()): entries displayed or not
+    // - setFormatter: takes args or computed string and returns string or nothing
+    //      - also acts as a filter (i.e. return undefined to NOT log an entry)
+
+    // how a log entry is generated
+    const defaultFormatter = (...args) => toDebugString(consoleOptions || defaultUtilInspectOpts, ...args);
+
+    let useSyncMethod = true; // alternative not implemented
     let consoleOptions = defaultUtilInspectOpts;
 
+    // changed via iffer() function (below)
+    let enabled = true; // can be true, false, or a function
+
+    // set via setFormatter
+    let formatter = defaultFormatter;
+
     const streams = {}; // substreams of this logger
+    const aliases = {};
 
-    const myDisplayedName = () => lvl === 0 ? singletonAppID : parent.name + '.' + name;
+    const loggerName = () => lvl === 0 ? singletonAppID : parent[streamNameProp] + '.' + name;
 
-    let fileFullName;
-    onAppIDChanged(newAppID => {
-        fileFullName = lvl === 0 ? genLogFileFullName(newAppID) // becomes new root dir for streams
-                     : lvl === 1 ? (parent.filename + '/' + name) 
-                                 : (parent.filename + '.' + name);
-    })
+    let fileFullName; // set (init) below...
+    onAppIDChanged(newAppID => fileFullName = genLogFileFullName(newAppID, name, lvl, parent));
 
     // proxy target (must be a function)
-    function unusedByLog(){}; // also used to keep user's custom props
+    function log0Function(){}; // also convenient spot to keep user's custom props
 
     function actualLogger(...args) {
 
-        let enabled = true;
-        // if ('ifCond' in localSettings) {
-        //     const {ifCond} = localSettings;
-        //     enabled = ifCond === undefined ? true 
-        //         : typeof ifCond === 'function' ? ifCond(...args)
-        //         : !!ifCond;
-        // }
+        let logIt = enabled === true || (enabled === false ? false : enabled(...args));
 
-        if (enabled) {
-            if (lvl > 0) {
-                const logEntry = toDebugString(consoleOptions, ...args);
+        if (logIt) {
+            if (lvl > 0) { // formatting & filtering here
+                const logEntry = formatter(...args);
 
-                CONSOLE_LOG('['+fileFullName+'] -- ', logEntry);
+                if (logEntry === undefined)
+                    return; // we're done
+
+                // while testing
+                CONSOLE_LOG('['+fileFullName+'] -- ', logEntry); 
                 
                 // recycle(fileFullName, logEntry.length + 1);
 
@@ -190,8 +208,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
                 //         err && CONSOLE_LOG('error writing to log', fileFullName, logEntry, err);
                 //     });
             }
-            else { 
-                // root log ALWAYS writes to app's main/primary console
+            else { // root log ALWAYS writes to app's main/primary console
                 CONSOLE_LOG("***", ...args);
             }
         }
@@ -199,25 +216,27 @@ function createLogger({name, parent, lvl = 0} = {}) {
         return loggerProxy; // important
     }
 
-
     const setters = {
         setApp, // most important
+        setFormatter, // also a filter (when returns undefined log entry not logged)
+        setEnabled, // short for .if()
+        setAlias, // e.g. warn=warning; (means warn is same as warning, and warning is to be used)
 
-        setAlias(){}, // e.g. warn and warning
+        setColorInFiles(flag = true) { consoleOptions.colors = flag; },
+        setConsoleOptions(options = defaultUtilInspectOpts) { consoleOptions = options; },
+        setSync(flag = true) { useSyncMethod = flag },
 
-        setConsoleOptions(){},
+        // some ideas (to implement soon)
         setRecycling(){},
+    }
 
-        setSync(){}, //
-        setStreaming(){},
-
-        setTracing(){}, // log with trace or not
-
-        setFilter(){}, // called on every log entry to change (or remove) log entry (e.g. json)
-        setFormatter(){}, // called on every log entry to change (or remove) log entry (e.g. json)
-
-        setEnabled(){}, // ongoing
-        setDisabled(){}, // ongoing
+    function setx(...opts) {
+        for (const optx of opts)
+            for (const [k,v] of Object.entries(optx)) {
+                const setter = 'set' + k[0].toUpperCase() + k.substring(1).toLowerCase();
+                (setter in setters) && setters[setter](v);
+            }
+        return loggerProxy;
     }
 
     function setApp(appIDorFileName) {
@@ -230,54 +249,106 @@ function createLogger({name, parent, lvl = 0} = {}) {
             .replace(/[a-z][A-Z]/g, m => m[0] + '-' + m[1].toLowerCase()); // camel to dash
 
         setAppID(appID);
-
-        return loggerProxy;
     }
 
-    function setx(...opts) {
-        for (const optx of opts)
-            for (const [k,v] of Object.entries(optx)) {
-                const setter = 'set' + k[0].toUpperCase() + k.substring(1);
-                if (setter in setters)
-                    setters[setter](v);
-                else
-                    ; // warning setter ignored
+    function setFormatter(formatterFcn) {
+
+        // function to set; anything else (incl nothing) to reset to default
+        // if function, return:
+        // - string to log as is (includes an empty string)
+        // - undefined to NOT log (so filtered out)
+        // - array normally (but uses array items instead of original args)
+        //      - useful when want to add, change, or remove args
+        // - anything else will use default formatter on that single arg
+
+        // function can take:
+        // - (...originalArgs) to use as needed
+        // - (argsAsStr, ...originalArgs) where argsAsStr is the default-formatted
+        //   string to use as needed; originalArgs also passed to formatter
+
+        if (typeof formatterFcn === 'function') {
+            formatter = (...args) => {
+                const fmtd = (formatterFcn.length === 0) ? formatterFcn(...args)
+                    : formatterFcn(defaultFormatter(...args), ...args);
+
+                return Array.isArray(fmtd) ? defaultFormatter(...fmtd)
+                    : (fmtd === undefined || typeof fmtd === 'string') ? fmtd
+                    : defaultFormatter(fmtd);
             }
-        return loggerProxy;
+        }
+        else
+            formatter = defaultFormatter; // reset back to default
     }
 
-    function iffer(doOrDont, cond, ...args) {
-        const test = typeof cond === 'function' ? cond(...args) : cond;
-        (doOrDont ? test : !test) && actualLogger(...args);
-        return loggerProxy;
-
+    function setEnabled(cond) {
+        enabled = (typeof cond === 'function' && cond.length === 1) ?
+            ((...args) => cond(defaultFormatter(...args), ...args)) : cond;
     }
 
-    const loggerProxy = new Proxy(unusedByLog, {
+    function iffer() {
+
+        // todo: should we also disable substreams? how to specify?
+        //       or should that be the default?
+
+        // returns a function always
+        // - that function ALSO always returns loggerProxy
+        // - that function ALSO has attached 2 read-only props: .enabled and .disabled
+
+        function ifx(cond, ...args) {
+            if (args.length === 0) { // setting for that stream
+                setEnabled(cond); // .if as shorthand for set({enabled:cond});
+            }
+            else { // setting just for this once
+                let enabled = (typeof cond === 'function') ?
+                    (cond.length === 1) ? cond(defaultFormatter(...args), ...args) : cond(...args) : cond;
+                enabled && actualLogger(...args);
+            }
+
+            return loggerProxy;
+        }
+
+        // "read-only" props (getters)
+        getter(ifx, "enabled", () => enabled); // filtered (function, so truish) or not explicitly disabled
+        getter(ifx, "disabled", () => enabled === false); // not filtered and not explicitly enabled
+
+        return ifx;
+    }
+
+    function setAlias(aliasesStr) {
+        // format: a = b; (or a:b;) where b is the actual one to be used
+        const aliasesSets = aliasesStr.replace(/\s+/g,'').split(/[,;|]/g);
+        for (const alias of aliasesSets) {
+            const [a,b] = alias.split(/[=:]/);
+            (a && b) && (aliases[a] = b);
+        }
+    }
+
+    const loggerProxy = new Proxy(log0Function, {
         get(target, prop) {
             if (prop === 'log') return actualLogger;
-            if (prop === 'name') return myDisplayedName();
+            if (prop === streamNameProp) return loggerName(); // get from symbol instead (so internal)
             if (prop === 'filename') return fileFullName;
-            if (prop === 'if') return (cond,...args) => iffer(true, cond, ...args);
-            if (prop === 'ifNot') return (cond,...args) => iffer(false, cond, ...args);
-
-            if (prop === 'set') return setx;//(...args) => setx(...args);
-            if (prop in setters) return setters[prop];
+            if (prop === 'if') return iffer(); // shorthand for setEnabled
+            if (prop === 'set') return setx;
             
+            // give user-defined props priority over streams
+            if (prop in log0Function) return log0Function[prop];
+
+            (prop in aliases) && (prop = aliases[prop]);
             if (prop in streams) return streams[prop]; // a proxied function
 
-            if (prop in unusedByLog) return unusedByLog[prop];
+            if (typeof prop !== 'string') return undefined; // e.g. symbol
 
             // create new stream
             const streamName = prop.replace(/\s+/g,'-').replace(/[a-z][A-Z]/g, m => `${m[0]}-${m[1].toLowerCase()}`);
             return streams[prop] = createLogger({ name: streamName, parent: loggerProxy, lvl: lvl+1 });
         },
         set(target, prop, value) {
-            unusedByLog[prop] = value;
-            return true; // important else node error
+            log0Function[prop] = value;
+            return true; // important (assignement success) else node error
         },
         deleteProperty(target, prop) {
-            (prop in unusedByLog) && delete unusedByLog[prop];
+            (prop in log0Function) && delete log0Function[prop];
         },
         apply(target, thisArgs, args) {
             return actualLogger(...args);
@@ -286,11 +357,10 @@ function createLogger({name, parent, lvl = 0} = {}) {
 
     return loggerProxy;
 
-    def('colorizeInFiles', (flag = true) => {
-        settings.consoleOpts.colors = flag;
-        return logger;
-    });
 
+    // some ideas (to implement later)...
+
+    // setStreaming(){},
     def('keepOpen', flag => {
         
         // can keep log file open as a stream for higher performance logging (e.g. high volume)
@@ -340,7 +410,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
         return logger;
     });
 
-    // todo: redirect to somewhere else (incl. multiple destinations; e.g. file, string)
+    // todo: redirect to somewhere else (incl. multiple destinations; e.g. other file(s), string)
 
     log.stop = function(exitCode, ...finalMsgs) {
         log(...finalMsgs);
@@ -348,13 +418,23 @@ function createLogger({name, parent, lvl = 0} = {}) {
         process.exit(exitCode);
     }
 
+    // setTracing(){}, // log with trace or not
     log.warningWithTrace = function(...args) {
         showInLog(...args) && console.trace('[WARNING]', ...args);
     }
 
+    // setTracing(){}, // log with trace or not
     log.errorWithTrace = function(...args) {
         showInLog(...args) && console.trace('[ERROR]', ...args); // todo: log permanently somewhere
     }
+}
+
+function getter(obj, prop, getter) {
+    Object.defineProperty(obj, prop, { 
+        enumerable: false,
+        configurable: false,
+        get: getter
+    })
 }
 
 const log0 = createLogger(); // 'root' logger
