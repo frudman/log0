@@ -30,6 +30,15 @@ can only do this ONCE per runtime per app
 
 // OPTION to ALSO go directly to console for 1 or more of the streams?
 
+// DON'T FORGET (from ~/devx/log0):
+// 1- increment package.json.version
+// 2- make changes
+// 3- push to github
+// 4- npm publish
+// 5- goto 1
+
+
+
 
 ## Viewer Usage `cmd> log0 ...`
 usage: log0 [[app=]app-name] [stream directive]*
