@@ -14,7 +14,7 @@ const FileNotFound = ex => ex.errno === 2 || /ENOENT/i.test(ex.code || '');
 
 const LOG0_APP_DIR = '.log0'; // e.g. `~/.log0/app-name` for mac & linux
 const userDir = require('os').homedir();
-const getLogDir = appID => `${userDir}/${LOG0_APP_DIR}/${appID.toLowerCase()}`;
+const getLogDir = appID => `${userDir}/${LOG0_APP_DIR}${appID ? '/'+appID.toLowerCase():''}`;
 
 const isRoot = lvl => lvl === 0; // helper
 
