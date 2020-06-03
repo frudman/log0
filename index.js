@@ -106,11 +106,14 @@ function getter(obj, prop, getter) {
 const CONSOLE_LOG = console.log.bind(console);
 let CONSOLE_OVERRIDE = false; // only 1 console so singleton for all loggers
 
+const EventEmitter = require('events');
+const ibedone = new EventEmitter();
 process.on('exit', (...args) => {
     // called NO MATTER WHAT (even if unhandled exceptions/rejections)
     // good place to close open streams (if any)
     // - so, when opening a stream, set process.on(exit) to close it
     CONSOLE_LOG('app exiting', args);
+    ibedone.emit('done');
 })
 
 // see: https://stackoverflow.com/questions/14031763/doing-a-cleanup-action-just-before-node-js-exits
@@ -139,9 +142,9 @@ function setAppID(appID) {
 }
 
 // use symbols to keep some props internal
-const streamNameProp = Symbol('stream name');
-const streamFileNameProp = Symbol('stream filename');
-const aliasesProp = Symbol('for stream aliases');
+const streamNameProp = Symbol(); //'stream name');
+const streamFileNameProp = Symbol(); //'stream filename');
+const aliasesProp = Symbol(); //'for stream aliases');
 
 function createLogger({name, parent, lvl = 0} = {}) {
 
@@ -339,7 +342,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
         }
     }
 
-    function setFileOptions({maxInMB=10, slices=4, deleteOnStart=true, useSync=true} = {}) {
+    function setFileOptions({maxInMB=10, slices=4, deleteOnStart=true, useSync=true, deleteOnExit=true} = {}) {
 
         // TODO: VERY WEAK SOLUTION; need something more robust
         // todo: split MAX_SIZE into multiple files then rotate those so always have a "tail"
@@ -347,6 +350,8 @@ function createLogger({name, parent, lvl = 0} = {}) {
 
         let info;
         let MAX_LOG_SIZE = maxInMB * 1024 * 1024; // to bytes
+
+        CONSOLE_LOG('PX0', (arguments.length === 0) ? 'NEW' : 'chg', filename);
 
         return (arguments.length === 0) ? wrLog : (wrEntry = wrLog);
 
@@ -358,8 +363,10 @@ function createLogger({name, parent, lvl = 0} = {}) {
             return { filename, size: 0 };
         }
 
+
         function recycle(newAmount) {
-            if (!info || info.filename !== filename) {                
+            if (!info || info.filename !== filename) {              
+                CONSOLE_LOG('PX', info && info.filename, filename);  
                 fs.mkdirSync(dirname(filename), { recursive: true });
                 if (deleteOnStart) {
                     info = delFile();
@@ -371,6 +378,23 @@ function createLogger({name, parent, lvl = 0} = {}) {
                     catch(ex) { // for now, just assume file not created yet
                         info = { filename, size: 0 }
                     }    
+                }
+                if (deleteOnExit) {
+                    const x = filename; // capture current value (may change later)
+                    ibedone.on('done', () => {
+                    //process.on('exit', () => {
+                        CONSOLE_LOG('deleting log file ' + x);//filename);
+                        try {
+                            fs.unlinkSync(x);//filename);
+                            CONSOLE_LOG('...success deleting');
+                        }
+                        catch(ex) {
+                            CONSOLE_LOG('...' + ex.message);
+                        }
+                        finally {
+                            CONSOLE_LOG('...done');
+                        }
+                    })
                 }
             }
             info.size += newAmount;
@@ -412,9 +436,9 @@ function createLogger({name, parent, lvl = 0} = {}) {
 
             if (typeof prop !== 'string') return undefined; // e.g. symbol
 
-            // create new stream
-            const name = normalize(prop);
-            return streams[name] = createLogger({ name, parent: loggerProxy, lvl: lvl+1 });
+            // create new stream: prop is how user knows this stream (so streams[prop] below)...
+            const name = normalize(prop); // ...but name is how the FS will know it
+            return streams[prop] = createLogger({ name, parent: loggerProxy, lvl: lvl+1 });
         },
         apply(target, thisArgs, args) {
             return actualLogger(...args);
