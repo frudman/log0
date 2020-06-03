@@ -1,3 +1,36 @@
+// TODO: Write this readme doc!
+
+// todo: clean up test samples
+
+    // document all setX methods
+
+    // reserved log props: cannot be used as stream names
+    //    log | if | set
+    // - but ok to use variants (e.g. IF or Log): stream/filenames will still be lowercase
+
+    // can extract log's details (e.g. filename) by calling .set() [without any parms]
+    // - e.g. const { name, filename } = log.set();
+
+// todo: DOCUMENT how/when to specify if log/stream is SYNC or not: matters for fast logging 
+//       - when order of entries matters (else some later entries may end up ahead of earlier ones)
+//       - sync also ensures that all logging is complete before app end (e.g. if process.exit 
+//         called somewhere else; without sync, could leave some log entries unwritten)
+//       CURRENT DEFAULT IS SYNC
+
+// todo: setDuplicateRedirect: redirect to somewhere else - multiple destinations 
+//       - e.g. other file(s) for more permanence; syslog; ...
+
+// todo: setStreaming mode: keeps file open for faster (maybe async?) writes
+//       - e.g. strm = fs.createWriteStream(filename, { flags: 'a', encoding: 'utf8' })
+//              [then] process.on('exit', () => strm.close())
+
+// todo: write file in "circular mode" where file rewrites itself from start
+//       - controls max file size easily
+//       - how to indicate (e.g. to self, to viewer) where end and beginning is
+
+
+
+
 ## Minimal Server-side Dev Logger
 
 - Like linux tail but for multiple files at once inclusing non-existing ones yet
@@ -36,6 +69,11 @@ can only do this ONCE per runtime per app
 // 3- push to github
 // 4- npm publish
 // 5- goto 1
+
+    // 2 ways to control log entries: [move this to readme.md]
+    // - setEnabled (or .if()): entries displayed or not
+    // - setFormatter: takes args or computed string and returns string or nothing
+    //      - also acts as a filter (i.e. return undefined to NOT log an entry)
 
 
 
