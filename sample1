@@ -1,0 +1,170 @@
+#!/usr/bin/env node
+
+// run as ./sample1
+
+const {log0} = require('log0');
+
+log0('Hello World!'); // shows up on console, always
+
+log0.importantInfo('this is need to know only');
+
+const [nodeBinPath, nodeAppPath, iterationsParms] = process.args;
+
+const iterations = Number.parseInt(iterationsParms) || 10000;
+
+while (iterations-- > 0) {
+    // log random events to logs
+}
+
+"use strict"; // keep until es-moduled (read below)
+const {log, getTempDirSync, TIMER, sleep, throwe, } = require('./core');
+
+log('should be directly on console, right?');
+
+log.infox('take 1: asdfasdf');
+
+// init log for all streams
+log.set({app:__filename})//.colorizeInFiles(true);
+
+log('app set but this STILL ON CONSOLE, right?');
+
+log.infox('take 2: dsfgdsfgsdf');
+
+log.qwerty.subzero('really loaded stream!', log.qw3erty.subzero.name);
+log.qw4erty('some fancy stream, am i right?');
+log.info('basic info here');
+
+let a = 1;
+log.info.if(a===1, 'A is ONE!!!', log.info.if.disabled);
+log.info.if(a===0, 'A is ZERO!!! ERROR IF SHOWN');
+log.info.if(() => a===3);
+log.info(`If this appears, that's an error!`)
+a = 3;
+log.info(`If this DOESN'T appear, that's an error!`, log.info.enabled, log.info.disabled)
+
+const logx = log.basic;
+logx('this is from logx');
+
+log('now leaving');
+
+log.setApp(__filename)//.colorizeInFiles(true);
+log.setApp('pretyop');
+log.setApp('pretyop');
+log.setApp('pretyop');
+log.setApp('pretyop');
+
+log.qPsetxapp('pretyop');
+log.qPsetxapp('pretyop');
+log.qPsetxapp('pretyop');
+
+
+log.LOG('pretyop');
+log.If('pretyop');
+log.SET({app: "not relevant"});
+log.SET({app: "not relevant"});
+log.SET({app: "not relevant"});
+log.SET({app: "not relevant"});
+
+log.if(false).log('error if displayed!');
+log('error if displayed!');
+log.if(true).log('error if NOT displayed!');
+
+log.info2.if(() => false);
+log.info2('error if displayed for log.info2');
+log.info2.if(() => true);
+log.info2('error if NOT displayed for log.info2');
+log.info2.if((...args) => args.length > 1);
+log.info2('error if displayed for info2 BECAUSE only a single parm')
+log.info2('GOOD if displayed for info2', 123)
+
+log.info2.if((str, ...args) => args.length > 1);
+log.info2('error if displayed for info2 BECAUSE only a single parm')
+log.info2('error if NOT displayed for info2', 123)
+
+log.info3('hello from 3!');
+log.info3.set({formatter(...args) {
+    return [new Date(), ...args]; // add time stamp in front
+}}).log('hello again from 3: any difference?')
+log.info3.set({formatter(str,...args) {
+    return str.replace(/\w{4,}/g, '***'); // redact secrets!
+}}).log('hello again but now from 3: any difference this time or not?')
+
+log.info3.set({formatter(str,...args) {
+    return Symbol(': what??? ' + str.length + '; ' + args.length);//str.replace(/\w{4,}/g, '***'); // redact secrets!
+}}).log('hello again but now from 3: any difference this time or not?', 123, 'abc')
+
+log.info3.set({formatter(...args) {
+    return Symbol(': what??? ' + args.length);//str.replace(/\w{4,}/g, '***'); // redact secrets!
+}}).log('hello again but now from 3: any difference this time or not?', 123, 'abc')
+
+log.info3.set({formatter(...args) {
+    return true;
+}}).log('hello again but now from 3: any difference this time or not?', 123, 'abc')
+log.info3.set({formatter(...args) {
+    return 123.456;
+}}).log('hello again but now from 3: any difference this time or not?', 123, 'abc')
+log.info3.set({formatter(...args) {
+    return false;
+}}).log('hello again but now from 3: any difference this time or not?', 123, 'abc')
+log.info3.set({formatter(...args) {
+    //return false;
+}}).log('hello again but now from 3: any difference this time or not?', 123, 'abc')
+log.info3.set({formatter(...args) {
+    return undefined;
+}}).log('hello again but now from 3: any difference this time or not?', 123, 'abc')
+log.info3.set({formatter(...args) {
+    return {date: new Date(), arbit: 123, args: args};
+}}).log('hello again but now from 3: any difference this time or not?', 123, 'abc')
+log.info3.set({formatter(...args) {
+    return JSON.stringify({date: new Date(), arbit: 123, args: args}, null, 4);
+}}).log('hello again but now from 3: any difference this time or not?', 123, 'abc')
+
+log.warning.set({alias: 'warn warned;;; qwerty'});
+log.warn('this is a warning on WARN');
+log.warned('and another is warned from WARNED');
+log.warning('and FINAL on ACTUAL WARNING');
+log.qwerty('coming from qwerty!\n...(NOT aliased because was an existing/PREVIOUSLY CREATED stream', log.set());
+
+log.traced('hello there!').set({tracing:true}).log('and now?');
+
+try {
+    throwe('qqq');
+}
+catch(ex) {
+    log.error(ex);
+}
+
+log.error2.set({tracing:true}).log('this is an error');
+
+delete log.error2;
+delete log.length;
+log('LAST???', log.length);
+
+try {
+    throwe('qqq');
+}
+catch(ex) {
+    log.error(ex);
+}
+
+testForLog();
+
+console.log('direct from log dot console')
+//log.infox.potter.set({consoleRedirect: true});
+log.set({consoleRedirect: 'infoxqa.potter2.triad3'});
+//log.set({consoleRedirect: true});
+console.log('redirected from log dot console now???')
+console.error('redirect from ERROR log dot console now???')
+console.warning('what??? :-)')
+console.warn('wh wh what??? :-)')
+console.info('from info wh wh what??? :-)')
+console.warn.if(false); // how to disable it
+console.warn('7wh wh what??? :-)')
+console.warn('8wh wh what??? :-)')
+
+log.tres.set({fileOptions:{maxInMB: 5, slices: 7, deleteOnStart: false, deleteOnExit: true}})
+log.tres('TRES says pqa');
+
+function testForLog() {
+    log.traced('from a function');
+}
