@@ -181,7 +181,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
     let filename, wrEntry; // initialized right below...
     onAppIDChanged(newAppID => {
         filename = genLogFileFullName(newAppID, name, lvl, parent);
-        wrEntry = setRecycling(); // setFSSettings fsSettings
+        wrEntry = setFileOptions();
     });
 
     function actualLogger(...args) {
@@ -209,7 +209,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
         setSync(flag = true) { useSyncMethod = flag },
         setTracing(flag = false) { tracing = flag; }, // log entry add where it was logged from
 
-        setRecycling,
+        setFileOptions,
         setConsoleRedirect,
     }
 
@@ -339,31 +339,22 @@ function createLogger({name, parent, lvl = 0} = {}) {
         }
     }
 
-    function setRecycling({maxInMB=10, slices=4, deleteOnStart=true, useSync=true} = {}) {
+    function setFileOptions({maxInMB=10, slices=4, deleteOnStart=true, useSync=true} = {}) {
 
         // TODO: VERY WEAK SOLUTION; need something more robust
         // todo: split MAX_SIZE into multiple files then rotate those so always have a "tail"
         //       of prior log entries (as newly rotated file starts from 0 length)
 
         let info;
-        let MAX_LOG_SIZE = maxInMB * 1024 * 1024; // in bytes
+        let MAX_LOG_SIZE = maxInMB * 1024 * 1024; // to bytes
 
-        if (arguments.length === 0) {
-            CONSOLE_LOG('*** INTIALIZING FROM RECYLCLING', loggerName());
-            return wrLog;
-        } 
-        else {
-            wrEntry = wrLog;
-            return CONSOLE_LOG('*** FROM RECYLCLING', arguments[0]);
-        }
+        return (arguments.length === 0) ? wrLog : (wrEntry = wrLog);
 
         function delFile() {
             try {
                 fs.unlinkSync(filename); // do NOT simply overwrite else viewer won't detect
             }
-            catch(ex) {
-
-            }
+            catch(ex) {}
             return { filename, size: 0 };
         }
 
