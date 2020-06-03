@@ -18,7 +18,8 @@
 //       - controls max file size easily
 //       - how to indicate (e.g. to self, to viewer) where end and beginning is
 
-const fs = require('fs');
+const fs = require('fs'),
+      {dirname} = require('path');
 
 // shorthand until https://github.com/tc39/proposal-throw-expressions
 const throwe = err => { throw (typeof err === 'string') ? new Error(err) : err; }
@@ -162,7 +163,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
     // all stream & alias names are normalized (spaces and camelNotation to dashes)
     const normalize = name => name.replace(/\s+/g,'-').replace(/[a-z][A-Z]/g, m => `${m[0]}-${m[1].toLowerCase()}`);
 
-    let useSyncMethod = true; // note: todo: alternative NOT implemented
+    //let useSyncMethod = true; // note: todo: alternative NOT implemented
     let consoleOptions = defaultUtilInspectOpts;
     let tracing = false;
 
@@ -177,11 +178,11 @@ function createLogger({name, parent, lvl = 0} = {}) {
 
     const loggerName = () => lvl === 0 ? singletonAppID : parent[streamNameProp] + '.' + name;
 
-    let filename; // initialized right below...
-    onAppIDChanged(newAppID => filename = genLogFileFullName(newAppID, name, lvl, parent));
-
-    // how to actually write entry to the log
-    const wrEntry = setRecycling();
+    let filename, wrEntry; // initialized right below...
+    onAppIDChanged(newAppID => {
+        filename = genLogFileFullName(newAppID, name, lvl, parent);
+        wrEntry = setRecycling(); // setFSSettings fsSettings
+    });
 
     function actualLogger(...args) {
         const shouldLog = enabled === true || (enabled === false ? false : enabled(...args));
@@ -214,8 +215,8 @@ function createLogger({name, parent, lvl = 0} = {}) {
 
     function setx(...opts) {
         if (opts.length === 0) // no args to get back current settings
-            return { name, fullname: loggerName(), filename, appID: singletonAppID,
-                useSyncMethod, consoleOptions, tracing, formatter, streams, aliases };
+            return { name, fullname: loggerName(), filename, appID: singletonAppID, //useSyncMethod, 
+                consoleOptions, tracing, formatter, streams, aliases };
 
         for (const optx of opts)
             for (const [k,v] of Object.entries(optx)) {
@@ -338,58 +339,63 @@ function createLogger({name, parent, lvl = 0} = {}) {
         }
     }
 
-    function setRecycling(parms) {
-
-        if (parms) {
-            CONSOLE_LOG('*** FROM RECYLCLING', parms);
-        }
+    function setRecycling({maxInMB=10, slices=4, deleteOnStart=true, useSync=true} = {}) {
 
         // TODO: VERY WEAK SOLUTION; need something more robust
-        // todo: make max size a user-defined setting
         // todo: split MAX_SIZE into multiple files then rotate those so always have a "tail"
         //       of prior log entries (as newly rotated file starts from 0 length)
-        function logfileApi(filename, maxSizeInMB = 10) {
-            return {
-                wr
-            }
+
+        let info;
+        let MAX_LOG_SIZE = maxInMB * 1024 * 1024; // in bytes
+
+        if (arguments.length === 0) {
+            CONSOLE_LOG('*** INTIALIZING FROM RECYLCLING', loggerName());
+            return wrLog;
+        } 
+        else {
+            wrEntry = wrLog;
+            return CONSOLE_LOG('*** FROM RECYLCLING', arguments[0]);
         }
 
-        const monitoredFile = {};
-        const MAX_LOG_SIZE_IN_MB = 10;
-        const MAX_LOG_SIZE = MAX_LOG_SIZE_IN_MB * 1024 * 1024; // in bytes
-        function recycle(file, newAmount) {
-            let info = monitoredFile[file];
-            if (!info) {
-                try {
-                    info = monitoredFile[file] = { size: fs.statSync(file).size }
+        function delFile() {
+            try {
+                fs.unlinkSync(filename); // do NOT simply overwrite else viewer won't detect
+            }
+            catch(ex) {
+
+            }
+            return { filename, size: 0 };
+        }
+
+        function recycle(newAmount) {
+            if (!info || info.filename !== filename) {                
+                fs.mkdirSync(dirname(filename), { recursive: true });
+                if (deleteOnStart) {
+                    info = delFile();
                 }
-                catch(ex) { // for now, just assume file not created yet
-                    info = monitoredFile[file] = { size: 0 }
+                else {
+                    try {
+                        info = { filename, size: fs.statSync(filename).size }
+                    }
+                    catch(ex) { // for now, just assume file not created yet
+                        info = { filename, size: 0 }
+                    }    
                 }
             }
             info.size += newAmount;
             if (info.size > MAX_LOG_SIZE) {
-                fs.unlinkSync(file); // do NOT simply overwrite else viewer won't detect
-                info.size = 0;
+                info = delFile();
             }
         }
 
-        return function wrLog(entry) {
-            // while testing
-            CONSOLE_LOG(redish('['+filename+']'), ' -- ', entry); 
-
-            // TODO TOMORROW: sync method (or not) AND recycling of files
-            // also: MOVE test code to samples in this code
-            
-            // recycle(fileFullName, logEntry.length + 1);
-
-            // if (useSyncMethod)
-            //     fs.appendFileSync(fileFullName, '\n' + logEntry);
-            // else
-            //     fs.appendFile(fileFullName, '\n' + logEntry, err => {
-            //         err && CONSOLE_LOG('error writing to log', fileFullName, logEntry, err);
-            //     });
-
+        function wrLog(entry) {
+            recycle(entry.length + 1);
+            if (useSync)
+                fs.appendFileSync(filename, '\n' + entry);
+            else
+                fs.appendFile(filename, '\n' + entry, err => {
+                    err && CONSOLE_LOG('error writing to log', filename, entry, err);
+                });
         }
     }
 
@@ -406,7 +412,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
             if (prop === streamNameProp) return loggerName(); // private prop (using symbol)
             if (prop === streamFileNameProp) return filename; // private prop (using symbol)
             if (prop === aliasesProp) return aliases; // private prop (using symbol)
-            
+
             // give user-defined props priority over streams
             if (prop in target) return target[prop]; // use otherwise-unused target for storage
 
