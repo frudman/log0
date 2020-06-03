@@ -1,6 +1,6 @@
 {
   "name": "log0",
-  "version": "0.3.2",
+  "version": "0.3.4",
   "description": "a minimal (micro) logger to replace console.log for server-side development",
   "bin": {
     "log0": "viewer.js"
@@ -13,7 +13,7 @@
   },
   "scripts": {
     "test": "node sample-app-1",
-    "install": "chmod +x sample-app-*"
+    "install": "chmod +x sample*"
   },
   "keywords": [
     "log",
