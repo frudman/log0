@@ -86,7 +86,7 @@ const getter = (obj, prop, get) => Object.defineProperty(obj, prop, { get, enume
 const CONSOLE_LOG = console.log.bind(console); // never lose sight of reality
 let CONSOLE_OVERRIDE = false; // only 1 console so this is a singleton for all loggers
 
-// TODO: below (process.on(exit) is ALWAYS SET!
+// TODO: process.on(exit) (below) is ALWAYS SET!
 // - even for viewer: there's no need for that; 
 // - SHOULD SET ONLY when actually logging AND ONLY if need to delete files (or soemthing)
 
@@ -98,12 +98,13 @@ process.on('exit', exitCode => {
     ibedone.emit('done');
 });
 
-// DISABLED CTRL-C below because no need and can trap users
+// DISABLED CTRL-C below because no need here AND CAN TRAP USERS (if not careful)
 // ctrl-C or ctrl-BREAK (untested on Windows)
 // process.on('SIGINT', () => {
-//     ibedone.emit('done'); // but then how long to wait...
+//     ibedone.emit('done'); // but then how long to wait?
 //     // ...because MUST THEN...
 //     process.exit(); // ...ELSE USER IS TRAPPED!
+//          // maybe setTimeout(2000)?
 // }); 
 
 // see: https://stackoverflow.com/questions/14031763/doing-a-cleanup-action-just-before-node-js-exits

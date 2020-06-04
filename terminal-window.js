@@ -4,13 +4,13 @@
 // I created for dev needs on a project; feel free to augment for your needs
 // likely plenty of alternatives available but was more fun (for me) to write this
 
-const { toDebugString, toUnicode, setWindowTitle, throwe, } = require('./index.js');
+const { toDebugString, toUnicode, setWindowTitle, throwe } = require('./index.js');
 
 function enableMethodDestructuring(obj) {
 
     // NOT WELL TESTED: use VERY CAREFULLY!
 
-    // allows for an object's methods to be destructured while still bound to original object
+    // allows for an object's methods to be destructured while still bound to its original object
     // for example:  const {wr, wrln, moveTo} = new TerminalWindow(stdin, stdout);
     // - so that wrln(...) will still work since it's still associated with the original TerminalWindow object
 
@@ -164,4 +164,5 @@ class TerminalWindow {
 
 module.exports = {
     TerminalWindow,
+    enableMethodDestructuring, // why not...
 }

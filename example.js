@@ -1,14 +1,17 @@
-#!/usr/bin/env node --harmony-private-methods
+#!/usr/bin/env node
 
 // first: `[sudo] npm install -g log0` (or `[sudo] npm install -g` if in dir already)
-// then: `./sample1` or `./sample2`
+// then: `log0-example` from any other terminal window
+// then: `log0` or `log0 sampler` from any other window(s)
 
-const {log0:log} = require('./index.js'); // `require('log0');` when installed
+// npm list -g log0 to view installation (npm update -g log0)
+
+const {log0:log} = require('log0');//./index.js'); // MUST `require('log0');` when installed
 
 // plain log() shows up on console, always
 log(`Hello World!`);
 log(`I'm running from this app: ${__filename}`);
-log('Feel free to modify me to experiment!'); 
+log('Feel free to modify me and experiment further'); 
 
 // give our app a name
 // - optional but easier when working on many apps at once
@@ -19,6 +22,7 @@ log.set({app:appName});
 // plain log() shows up on console, always
 log('...still on the main console for simple log() statements'); 
 log(`...to view other logs, on separate terminal windows, type 'log0 ${appName}'`); 
+log('then you can ctrl-c (ctrl-break) to quit.')
 
 // any other "stream" (e.g. importantInfo below) can now be viewed using
 // `log0 sampler` in another window (can have many such windows for same or other or all streams)

@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 
-/* see README.md for usage */
+// see README.md for usage (ctrl-c to cancel)
 const {stdout, argv: [nodeBinPath, log0AppPath, ...streamNames]} = process;
+stdout.write(`log0 viewer v.${require('./package.json').version} (ctrl-c to quit)\n`)
 
 const fs = require('fs'), {join} = require('path');
 const fsw = require('chokidar'); // "stabilizer" for fs.watch (important)
 const { getLogDir, redish, setWindowTitle, defaultAppID } = require('./index.js');
-
-const rootDir = getLogDir();
-fs.mkdirSync(rootDir, { recursive: true }); // always
 
 function appDirectives(appID, logDir) { // logDir is specific to appID
 
@@ -69,15 +67,19 @@ function showAppLogs(appID) { // returns a cancelable watcher
     return fsw.watch(appDir,{alwaysStat:true,depth:1}).on('change', showStream);
 }
 
-// START HERE: watch default (i.e. unnamed) app logs
+// START HERE
+const rootDir = getLogDir();
+fs.mkdirSync(rootDir, { recursive: true }); // always
+
+// watch default (i.e. unnamed) app's logs
 const log0Watcher = showAppLogs(defaultAppID);
 
-// then monitor other app dirs in case appID pops up
+// then monitor other apps' log dirs in case appID pops up
 const otherAppDirs = fsw.watch(rootDir).on('addDir', dir => {
     const appid = dir.substring(rootDir.length + 1)
-    if (appid === streamNames[0]) {
-        log0Watcher.close(); // not the one we wanted
-        showAppLogs(streamNames.shift()); // ctrl-c to cancel
-        otherAppDirs.close(); // while we're at it...
+    if (appid === streamNames[0]) { // if/when specified as 1st parm
+        log0Watcher.close(); // so, not the one we wanted...
+        showAppLogs(streamNames.shift()); // ...we wanted this one...
+        otherAppDirs.close(); // don't need this anymore either
     }
 });
