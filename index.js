@@ -39,7 +39,7 @@ const esc = `\x1b`, red = 31, brightRedx = 91, brightRed = `1;31`, black = 40, r
 // from: https://stackoverflow.com/a/30360821
 const setWindowTitle = title => process.stdout.write(`${esc}]0;${title}\x07`);
 
-// todo: move to core.js; add means to customize (e.g. remove throwe, log0/index.js, ...)
+// todo: move to core.js; add means to customize (e.g. re-based throwe, log0/index.js)
 function extractStack(err) {
     // based on (and should be improved using): https://v8.dev/docs/stack-trace-api
     // basically: we remove cruft (e.g. node & log0 & other stuff)
@@ -82,21 +82,24 @@ function toUnicode(str) {
 // helper
 const getter = (obj, prop, get) => Object.defineProperty(obj, prop, { get, enumerable: false, configurable: false });
 
-// base console can be "overwritten" so keep original safe
-const CONSOLE_LOG = console.log.bind(console);
+// "native" console can be "overwritten" so keep original safe
+const CONSOLE_LOG = console.log.bind(console); // never lose sight of reality
 let CONSOLE_OVERRIDE = false; // only 1 console so this is a singleton for all loggers
 
 const ibedone = new EventEmitter();
 process.on('exit', exitCode => { 
     // called ALWAYS NO MATTER WHAT (even if unhandled exceptions/rejections)
+    // (though NOT if ctrl-c or ctrl-break: done separately below)
     // good place to (e.g.) close open streams (if any) or delete tmp files
     ibedone.emit('done');
-})
+});
+
+// ctrl-C or ctrl-BREAK (untested on Windows)
+process.on('SIGINT', () => ibedone.emit('done')); 
 
 // see: https://stackoverflow.com/questions/14031763/doing-a-cleanup-action-just-before-node-js-exits
 // process.on('uncaughtException', (...args) => {});
 // process.on('unhandledRejection', (...args) => {}); // yep, it's a thing!
-// MAY WANT TO ADD ctrl-c in case need to delete files and such
 
 // can only set it once per app & can't change it after (reason below)
 let singletonAppID = defaultAppID, listeners = [];
@@ -111,7 +114,7 @@ function setAppID(appID) {
         listeners.forEach(listener => listener(appID));
     }
     else if (appID !== singletonAppID) {
-        throw new Error(`App ID already set to /${singletonAppID} (cannot be changed to /${appID})`)
+        throw new Error(`App ID already set to [${singletonAppID}] (cannot be changed to [${appID}])`)
     }
 }
 
