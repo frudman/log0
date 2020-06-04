@@ -86,6 +86,10 @@ const getter = (obj, prop, get) => Object.defineProperty(obj, prop, { get, enume
 const CONSOLE_LOG = console.log.bind(console); // never lose sight of reality
 let CONSOLE_OVERRIDE = false; // only 1 console so this is a singleton for all loggers
 
+// TODO: below (process.on(exit) is ALWAYS SET!
+// - even for viewer: there's no need for that; 
+// - SHOULD SET ONLY when actually logging AND ONLY if need to delete files (or soemthing)
+
 const ibedone = new EventEmitter();
 process.on('exit', exitCode => { 
     // called ALWAYS NO MATTER WHAT (even if unhandled exceptions/rejections)
@@ -94,8 +98,13 @@ process.on('exit', exitCode => {
     ibedone.emit('done');
 });
 
+// DISABLED CTRL-C below because no need and can trap users
 // ctrl-C or ctrl-BREAK (untested on Windows)
-process.on('SIGINT', () => ibedone.emit('done')); 
+// process.on('SIGINT', () => {
+//     ibedone.emit('done'); // but then how long to wait...
+//     // ...because MUST THEN...
+//     process.exit(); // ...ELSE USER IS TRAPPED!
+// }); 
 
 // see: https://stackoverflow.com/questions/14031763/doing-a-cleanup-action-just-before-node-js-exits
 // process.on('uncaughtException', (...args) => {});
