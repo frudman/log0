@@ -1,7 +1,7 @@
 {
   "name": "log0",
-  "version": "0.4.5",
-  "description": "a minimal (micro) logger to replace console.log for server-side development",
+  "version": "0.4.7",
+  "description": "a minimal local logger to improve on console.log for server-side development",
   "bin": {
     "log0": "viewer.js",
     "log0-example": "example.js"
@@ -13,7 +13,7 @@
     "url": "git@github.com:frudman/log0.git"
   },
   "scripts": {
-    "test": "node sample-app-1",
+    "test": "node example.js",
     "install": "chmod +x sample*"
   },
   "keywords": [
@@ -24,7 +24,8 @@
     "development",
     "server-side",
     "node",
-    "syslog"
+    "syslog",
+    "console"
   ],
   "author": "Frederic Rudman",
   "license": "ISC",
