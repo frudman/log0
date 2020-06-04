@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-// see README.md for usage
+/* see README.md for usage */
 const {stdout, argv: [nodeBinPath, log0AppPath, ...streamNames]} = process;
 
 const fs = require('fs'), {join} = require('path');
 const fsw = require('chokidar'); // "stabilizer" for fs.watch (important)
-const { getLogDir, redish, setWindowTitle } = require('./index.js');
+const { getLogDir, redish, setWindowTitle, defaultAppID } = require('./index.js');
 
 const rootDir = getLogDir();
 fs.mkdirSync(rootDir, { recursive: true }); // always
@@ -70,7 +70,7 @@ function showAppLogs(appID) { // returns a cancelable watcher
 }
 
 // START HERE: watch default (i.e. unnamed) app logs
-const log0Watcher = showAppLogs('log0');
+const log0Watcher = showAppLogs(defaultAppID);
 
 // then monitor other app dirs in case appID pops up
 const otherAppDirs = fsw.watch(rootDir).on('addDir', dir => {

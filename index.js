@@ -12,9 +12,8 @@ const throwe = err => { throw (typeof err === 'string') ? new Error(err) : err; 
 // below as per: // https://nodejs.org/api/errors.html#errors_common_system_errors
 const FileNotFound = ex => ex.errno === 2 || /ENOENT/i.test(ex.code || ''); 
 
-const LOG0_APP_DIR = '.log0'; // e.g. `~/.log0/app-name` for mac & linux
-const userDir = require('os').homedir();
-const getLogDir = appID => join(userDir, LOG0_APP_DIR, (appID||'').toLowerCase());
+const defaultAppID = 'log0';
+const getLogDir = appID => join(require('os').homedir(), `.${defaultAppID}`, (appID||'').toLowerCase());
 
 const isRoot = lvl => lvl === 0; // helper
 
@@ -95,16 +94,11 @@ process.on('exit', exitCode => {
 })
 
 // see: https://stackoverflow.com/questions/14031763/doing-a-cleanup-action-just-before-node-js-exits
-// process.on('uncaughtException', (...args) => {
-//     CONSOLE_LOG('SORRY, app exiting: UNCAUGHT EXCEPTION', args);
-// })
-// process.on('unhandledRejection', (...args) => {
-//     // yep, it's a thing!
-//     CONSOLE_LOG('SORRY, app exiting: UNHANDLED REJECTION', args);    
-// })
+// process.on('uncaughtException', (...args) => {});
+// process.on('unhandledRejection', (...args) => {}); // yep, it's a thing!
+// MAY WANT TO ADD ctrl-c in case need to delete files and such
 
 // can only set it once per app & can't change it after (reason below)
-const defaultAppID = 'log0';
 let singletonAppID = defaultAppID, listeners = [];
 const onAppIDChanged = action => { action(singletonAppID); listeners.push(action); }
 function setAppID(appID) {
@@ -422,6 +416,7 @@ const log0 = createLogger();
 module.exports = {
     log0,
     log: log0, // alias for convenience
+    defaultAppID,
 
     consoleString,
     throwe,
