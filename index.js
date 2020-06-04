@@ -3,7 +3,7 @@
 /* see README.md for usage */
 
 const fs = require('fs'),
-      {dirname} = require('path'),
+      {dirname,join,sep} = require('path'), // platform-specific
       EventEmitter = require('events');
 
 // shorthand until https://github.com/tc39/proposal-throw-expressions
@@ -14,7 +14,7 @@ const FileNotFound = ex => ex.errno === 2 || /ENOENT/i.test(ex.code || '');
 
 const LOG0_APP_DIR = '.log0'; // e.g. `~/.log0/app-name` for mac & linux
 const userDir = require('os').homedir();
-const getLogDir = appID => `${userDir}/${LOG0_APP_DIR}${appID ? '/'+appID.toLowerCase():''}`;
+const getLogDir = appID => join(userDir, LOG0_APP_DIR, (appID||'').toLowerCase());
 
 const isRoot = lvl => lvl === 0; // helper
 
@@ -22,7 +22,7 @@ const isRoot = lvl => lvl === 0; // helper
 // **always** goes to console (this is so an app can always explicitly target its own console)
 const genLogFileFullName = (appID, streamName, lvl, parent) => 
     isRoot(lvl) ? getLogDir(appID) // root is always a dir (not file)
-                : (parent[streamFileNameProp] + (lvl === 1 ? '/' : '.') + streamName.toLowerCase());
+                : (parent[streamFileNameProp] + (lvl === 1 ? sep : '.') + streamName.toLowerCase());
 
 // based on: https://stackoverflow.com/a/28397970/11256689
 // - https://nodejs.org/api/util.html#util_util_inspect_object_options
@@ -312,7 +312,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
         }
     }
 
-    function setFileOptions({maxInMB=10, slices=4, deleteOnStart=true, useSync=true, deleteOnExit=true} = {}) {
+    function setFileOptions({maxInMB=10, slices=4, deleteOnStart=true, useSync=true, deleteOnExit=false} = {}) {
 
         // TODO: VERY WEAK SOLUTION/IMPLEMENTATION so need to clean it up
         // todo: split MAX_SIZE into multiple [sub] files (slices) then rotate those so always have 
@@ -347,7 +347,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
 
                 if (deleteOnExit) {
                     const file = filename; // capture current value (may change later)
-                    ibedone.on('done', () => { try {  fs.unlinkSync(file); } catch {} });
+                    ibedone.on('done', () => { try { fs.unlinkSync(file); } catch {} });
                 }
             }
             info.size += newAmount;

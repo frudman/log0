@@ -8,18 +8,43 @@ const {log0:log} = require('./index.js'); // `require('log0');` when installed
 // plain log() shows up on console, always
 log('Hello World!'); 
 
-// any other "stream" (e.g. importantInfo below) must be explicitly viewed 
-// (using log0 in another window)
+// give our app a name (optional)
+// to view its logs use: `log0 sampler`
+const appName = 'sampler'; // can be anything
+log.set({app:appName});
+
+// plain log() shows up on console, always
+log('...still on the main console'); 
+log(`...to view other logs, on another terminal window, type 'log0 ${appName}'`); 
+
+
+// any other "stream" (e.g. importantInfo below) can now be viewed using
+// `log0 sampler` in another window (can have many such windows for same or other or all streams)
 log.importantInfo('this is need to know only');
+log.importantInfo('again, this is need to know only');
 
 const [nodeBinPath, nodeAppPath, iterationsParms] = process.argv;
+let iterations = Number.parseInt(iterationsParms) || 100;
 
-let iterations = Number.parseInt(iterationsParms) || 10;//000;
+//const sleep = timeInMS => new Promise(resolve => setImmediate(resolve));//,timeInMS));
+const sleep = timeInMS => new Promise(resolve => setTimeout(resolve,timeInMS));
 
-while (iterations-- > 0) {
+testLogging(iterations);
+
+
+async function testLogging(iterations) {
     // log random events to logs
-    log('hello!', iterations)
+    while (iterations-- > 0) {
+        await sleep(100);//10);
+        log.importantInfo('hello again for the ' + iterations + ' time!');
+        log.anotherStream('this is different for the ' + iterations + ' time!');
+        log.fancyStream('this is different for the ' + iterations + ' time!');
+        log.fancyStream.substream1('this is different for the ' + iterations + ' time!');
+        log.fancyStream.substream2('this is different for the ' + iterations + ' time!');
+        log.fancyStream.substream2.subsub2b('this is different for the ' + iterations + ' time!');
+    }    
 }
+
 
 return;
 log('should be directly on console, right?');

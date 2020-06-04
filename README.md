@@ -29,6 +29,14 @@
 //       - how to indicate (e.g. to self, to viewer) where end and beginning is
 
 
+// basically, from separate terminal windows:
+// - `log0` [to view ALL logs (streams) for unnamed app(s)]
+// - `log0 my-app` [to view ALL logs (streams) for app named 'my-app']
+// - `log0 my-app error warning` [to view only the error and warning stream for app named 'my-app']
+// - `log0 my-app ...error ...warning` [to view my-app streams with names ending in 'error' or 'warning']
+// - `log0 my-app error... ...warning` [to view my-app streams with names starting with 'error' or ending with 'warning']
+// - `log0 my-app ...abcxyz... warning.severe` [to view my-app streams with names containing 'abcxyz'; also the warning.severe stream]
+
 
 
 ## Minimal Server-side Dev Logger

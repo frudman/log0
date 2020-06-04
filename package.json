@@ -26,5 +26,8 @@
     "syslog"
   ],
   "author": "Frederic Rudman",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "chokidar": "^3.4.0"
+  }
 }

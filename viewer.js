@@ -1,135 +1,87 @@
 #!/usr/bin/env node
 
 // see README.md for usage
-// basically, from separate terminal windows:
-// - `log0` [to view ALL logs (streams) for unnamed app(s)]
-// - `log0 my-app` [to view ALL logs (streams) for app named 'my-app']
-// - `log0 my-app error warning` [to view only the error and warning stream for app named 'my-app']
-// - `log0 my-app ...error ...warning` [to view my-app streams with names ending in 'error' or 'warning']
-// - `log0 my-app error... ...warning` [to view my-app streams with names starting with 'error' or ending with 'warning']
-// - `log0 my-app ...abcxyz... warning.severe` [to view my-app streams with names containing 'abcxyz'; also the warning.severe stream]
+const {stdout, argv: [nodeBinPath, log0AppPath, ...streamNames]} = process;
 
-const [nodeBinPath, log0AppPath, ...streamNames] = process.argv;
+const fs = require('fs'), {join} = require('path');
+const fsw = require('chokidar'); // "stabilizer" for fs.watch (important)
+const { getLogDir, redish, setWindowTitle } = require('./index.js');
 
-const fs = require('fs');
-const { getLogDir, FileNotFound, redish, setWindowTitle } = require('./index.js');
-const wr = txt => process.stdout.write(txt); // shorthand for below
-
-const rootDir = getLogDir();//`${require('os').homedir()}/.log0`,
-const join = (a,b) => `${a}/${b}`; // todo: use path.sep
-
-//const logDir = getLogDir();//`${require('os').homedir()}/.log0`;//getLogDir(appID);
+const rootDir = getLogDir();
 fs.mkdirSync(rootDir, { recursive: true }); // always
 
-function getDirectives(appID, logDir) {
+function appDirectives(appID, logDir) { // logDir is specific to appID
 
-    let explicitViews = 0, trim = 0;
-    const directives = [], streams = {}, fyi = [];
-
-    //const logDir = getLogDir(appID);
-
-    // helper
-    //const trimName = n => trim ? n.substring(trim).split(/[.]/).filter((n,i) => i !== 0 || n !== 'stdout').join('.') : n;
-    // needed still? no more stdout; remove first part always? (i!==0)?
-    const trimName = n => trim ? n.substring(trim).split(/[.]/).filter((n,i) => i !== 0 || n !== 'stdout').join('.') : n;
-
-
-    const viewing = strm => (directives.find(d => d.applies(strm.name)) || defaultDirective).view;
-
-    function getStream(name) {
-
-        if (name in streams) return streams[name];
-
-        const file = logDir + '/' + name, {size:pos} = fs.statSync(file); //and APP ID???
-        return streams[name] = {name, file, pos}; // ADD .displayName = trimName(stream.name);
-    }
+    let explicitViews = 0, wildcards = false;
+    const logs = {}, directives = [], fyi = [];
 
     for (const sn of streamNames) {
         const [, f, name] = sn.match(/^([+-]?)(.*)$/) || [];
-
-        const re = new RegExp('^' + name.replace(/[.]{3,}/g, '(.*)') + '$', "i"); // '...' === wildcard
+        (name.indexOf('...') === -1) || (wildcards = true); // '...' === wildcard
+        (f === '-') || explicitViews++;
+        const re = new RegExp('^' + name.replace(/[.]{3,}/g, '(.*)') + '$', "i"); 
         directives.push({ applies(n) { return re.test(n); }, view: f !== '-'});
-
-        (f === '-') || (trim = (++explicitViews === 1) ? (name.length + 1) : 0);
         fyi.push((f || '+') + name.replace(/[.]{3,}/g, '*')); // display as traditional wildcard
     }
 
     const showAll = explicitViews === 0, defaultDirective = {view: showAll};
+    const title = `${appID} live logs [${(showAll ? 'ALL STREAMS' : fyi.join(';'))}]`;
 
-    const title = `${appID} live logs [${(showAll ? 'ALL STREAMS' : fyi.join(';'))}]`
+    return {title,showStream};
 
-
-    return {title,viewing,getStream};
-}
-
-async function DisplayRunningLogs() {
-
-    // need 2 levels of watching: 1 for new apps, then 1 for each app
-
-    function watching(appID, showTitle) { // returns a cancelable watcher
-
-        const appDir = join(rootDir, appID);
-        const {title, viewing, getStream} = getDirectives(appID, appDir);
-
-        showTitle && setWindowTitle(title);
-
-        return fs.watch(appDir, async (evt, filename) => {
-            const stream = getStream(filename); // here filename is stream's full name
-            try {            
-                viewing(stream) && await dumpNewEntries(stream);
-            }
-            catch(ex) {
-                FileNotFound(ex) ? (stream.pos = 0) : wr(`${ex.message || ex.error || ex}\n`);
-            }
-        });
+    function viewingStream(filename) {
+        if (filename in logs) return logs[filename];
+        const name = filename.substring(logDir.length + 1);;
+        const viewing = (directives.find(d => d.applies(name)) || defaultDirective).view;
+        const tag = viewing && (explicitViews !== 1 || wildcards) && `\n[${redish(name.toUpperCase())}] `;
+        return logs[filename] = {tag,viewing,stats:{}};
     }
 
-    const APP_ID = streamNames[0] || 'log0'; // if nothing specified, watch unnamed app (log0)
-    const existingDirs = fs.readdirSync(rootDir);
-    if (existingDirs.find(dir => dir === APP_ID)) { // best case
-        streamNames.shift(); // remove appid (if was there at all)
-        watching(APP_ID, true);
-    }
-    else { // either app not created yet OR watching streams for log0
-        const apps = {};
-        // start by watching all dirs
-        existingDirs.forEach(dir => apps[dir] = watching(dir));
-        // then wait for wanted one to possibly appear
-        const ALLWATCHED = fs.watch(rootDir, async (eventType, dirname) => {
-            if (dirname === APP_ID) {
-                for (const d in apps) apps[d].close(); // close all others
-                streamNames.shift();
-                watching(APP_ID, true);
-                ALLWATCHED.close(); // no need to watch main dir anymore
+    async function showStream(filename, newStats) {
+        const {tag,viewing,stats} = viewingStream(filename);
+        if (viewing) {
+            if (stats.ino) { // .ino === .inode (a unique OS id for a file)
+                if (stats.ino === newStats.ino && stats.size < newStats.size) { // same file, more content
+                    stats.size = await dumpNewEntries(filename, stats.size, tag);
+                    return;
+                }
             }
-            else if (!(dirname in apps))
-                apps[dirname] = watching(dirname); // watching new dir
-        });
+            // either new file or file rewritten
+            stats.ino = newStats.ino; // save this [new] unique OS id
+            stats.size = await dumpNewEntries(filename, 0, tag); // 0 === start from beginning
+        }
     }
 
-    async function dumpNewEntries(stream) {
-
-        // issue (not worth worrying about)
-        // if file is deleted by user, it will be correctly monitored when/if re-created
-        // (because file watcher thinks of it as a new file [with a different inode id])
-        // BUT, if file is trimmed (i.e. its length is reduced, as in rewriting its content),
-        // the new content will NOT begin to display until its new length grows greater than
-        // what it was before (since existing stream.pos will be larger than the new content, 
-        // initially) [that's because file watcher sees SAME file since inode stays the same]
-
-        const tag = stream.displayName ? `\n[${redish(stream.displayName.toUpperCase())}] ` : '';
-
+    async function dumpNewEntries(filename,nextPos,tag) {
         return new Promise((resolve,reject) => {
-            fs.createReadStream(stream.file, {start: stream.pos, encoding: 'utf8'})
+            fs.createReadStream(filename, {start: nextPos, encoding: 'utf8'})
                 .on('data', data => {
-                    wr(tag ? data.replace(/\n/g, tag) : data);
-                    stream.pos += data.length;
+                    stdout.write(tag ? data.replace(/\n/g, tag) : data);
+                    nextPos += data.length;
                 })
                 .on('error', err => reject(err))
-                .on('end', resolve) // no more data (still open) [1st]
-                .on('close', resolve); // underlying stream closed [last]
+                .on('end', () => resolve(nextPos)) // no more data (still open) [1st]
+                .on('close', () => resolve(nextPos)); // underlying stream closed [last]
         });
     }
 }
 
-DisplayRunningLogs(); // start
+function showAppLogs(appID) { // returns a cancelable watcher
+    const appDir = join(rootDir, appID);
+    const {title, showStream} = appDirectives(appID, appDir);
+    setWindowTitle(title);
+    return fsw.watch(appDir,{alwaysStat:true,depth:1}).on('change', showStream);
+}
+
+// START HERE: watch default (i.e. unnamed) app logs
+const log0Watcher = showAppLogs('log0');
+
+// then monitor other app dirs in case appID pops up
+const otherAppDirs = fsw.watch(rootDir).on('addDir', dir => {
+    const appid = dir.substring(rootDir.length + 1)
+    if (appid === streamNames[0]) {
+        log0Watcher.close(); // not the one we wanted
+        showAppLogs(streamNames.shift()); // ctrl-c to cancel
+        otherAppDirs.close(); // while we're at it...
+    }
+});
