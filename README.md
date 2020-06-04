@@ -1,6 +1,5 @@
 // TODO: Write this readme doc!
-
-// todo: clean up test samples
+// TODO: cleanup the samples
 
     // document all setX methods
 
