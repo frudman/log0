@@ -6,34 +6,33 @@
 const {log0:log} = require('./index.js'); // `require('log0');` when installed
 
 // plain log() shows up on console, always
-log('Hello World!'); 
+log(`Hello World!`);
+log(`I'm running from this app: ${__filename}`);
+log('Feel free to modify me to experiment!'); 
 
-// give our app a name (optional)
-// to view its logs use: `log0 sampler`
+// give our app a name
+// - optional but easier when working on many apps at once
+// - then, to view its logs use: `log0 sampler`
 const appName = 'sampler'; // can be anything
 log.set({app:appName});
 
 // plain log() shows up on console, always
-log('...still on the main console'); 
-log(`...to view other logs, on another terminal window, type 'log0 ${appName}'`); 
-
+log('...still on the main console for simple log() statements'); 
+log(`...to view other logs, on separate terminal windows, type 'log0 ${appName}'`); 
 
 // any other "stream" (e.g. importantInfo below) can now be viewed using
 // `log0 sampler` in another window (can have many such windows for same or other or all streams)
 log.importantInfo('this is need to know only');
 log.importantInfo('again, this is need to know only');
 
+// for example...
 const [nodeBinPath, nodeAppPath, iterationsParms] = process.argv;
 let iterations = Number.parseInt(iterationsParms) || 100;
 
-//const sleep = timeInMS => new Promise(resolve => setImmediate(resolve));//,timeInMS));
 const sleep = timeInMS => new Promise(resolve => setTimeout(resolve,timeInMS));
 
-testLogging(iterations);
-
-
-async function testLogging(iterations) {
-    // log random events to logs
+testLogging(iterations); // log random events to logs
+async function testLogging(iterations) {  
     while (iterations-- > 0) {
         await sleep(100);//10);
         log.importantInfo('hello again for the ' + iterations + ' time!');
