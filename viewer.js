@@ -34,20 +34,16 @@ function appDirectives(appID, logDir) { // logDir is specific to appID
         const name = filename.substring(logDir.length + 1);;
         const viewing = (directives.find(d => d.applies(name)) || defaultDirective).view;
         const tag = viewing && (explicitViews !== 1 || wildcards) && `\n[${redish(name.toUpperCase())}] `;
-        return logs[filename] = {tag,viewing,stats:{}};
+        return logs[filename] = {tag,viewing,stats:{}}; // note: no stats.ino to start
     }
 
     async function showStream(filename, newStats) {
         const {tag,viewing,stats} = viewingStream(filename);
         if (viewing) {
-            if (stats.ino) { // .ino === .inode (a unique OS id for a file)
-                if (stats.ino === newStats.ino && stats.size < newStats.size) { // same file, more content
-                    stats.size = await dumpNewEntries(filename, stats.size, tag);
-                    return;
-                }
-            }
-            // either new file or file rewritten
-            stats.ino = newStats.ino; // save this [new] unique OS id
+            if (stats.ino === newStats.ino) // same existing file, more content?
+                return stats.size = await dumpNewEntries(filename, stats.size, tag); // yes
+            // nope, it's a new log file
+            stats.ino = newStats.ino; // save this new unique OS file id (.ino === .inode)
             stats.size = await dumpNewEntries(filename, 0, tag); // 0 === start from beginning
         }
     }
