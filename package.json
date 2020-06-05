@@ -1,6 +1,6 @@
 {
   "name": "log0",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "a minimal local logger that improves on console.log for node.js development",
   "bin": {
     "log0": "viewer.js",
@@ -25,7 +25,9 @@
     "server-side",
     "node",
     "syslog",
-    "console"
+    "console",
+    "terminal",
+    "command-line"
   ],
   "author": "Frederic Rudman",
   "license": "ISC",

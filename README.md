@@ -61,7 +61,7 @@ perr('sorry, no can do', xyz);
     - this includes `log.runtime.error`, `log.runtime.warning`, `log.parsing.error`, and `log.parsing.warning` from above
 - and so on...
 
-[Full usage instructions below](#Usage)
+[Full usage instructions below](#usage)
 
 <a name=motivation></a>
 ## Motivation
@@ -77,7 +77,7 @@ of the "root" log, such as `log.aVirtualLogNameHere()`.
 
 You can create "sub-logs" by simply nesting further, such as `log.virtual1.subVirtual2.subSubVirtual3.sub4()`.
 
-You can use a [**shorthand**](#Shorthand) notation within any .js file for legibility. For example:
+You can use a [**shorthand**](#Shorthand) notation within any node.js app file for legibility. For example:
 ```
 // long way...
 log.virtual1.subVirtual2.subSubVirtual3.sub4('some information here');
@@ -105,20 +105,19 @@ It's **not** a [log cabin](https://en.wikipedia.org/wiki/Log_cabin)
 
 log0's purpose is for **LIVE**, **IMMEDIATE**, while-you-are-developing, **LOCAL**, console.log-type logging for **server-side node.js development**.
 
-And that's where the name comes from. Its logs are *ephemeral*. It logs **0 (zero)** entries permanently.
-
-It's also very simple, slim, and feature-lite, hence **0 as in zero-weight** on your app (in a sort of a double-entendre).
+And that's where it takes its name:
+- Its logs are *ephemeral*. It logs **0 (zero)** entries permanently
+- It's very simple, slim, and feature-lite, hence **0 as in zero-weight** on your app (double-entendre, anyone?)
 
 ## Short Story Long
 
-Logging means different things to different people: for production apps, logging is meant
-to record events as they happen for later analysis (especially large apps with cloud-based logging)
+Logging means different things to different parties: for production apps & managers, logging is long-term
+and meant to record events as they happen for later analysis (especially large apps with cloud-based logging)
 for bug extraction and performance improvement or feature enhancement.
 
 For developers, the stage of development (beta, production, alpha, or early-pre-alpha) affects the type 
-and purpose of "log entries." Often, early on, "logging" is really **shortform debugging** (not involving an actual debugger);
-
-It doesn't replace a debugger, but rather "console.log" is just another tool in the toolbelt.
+and purpose of logging. Often, very early on, logging is really just **quick-n-dirty debugging** (not involving 
+an actual debugger). It doesn't replace a debugger, but rather it's just another tool in our developer's toolbelt.
 
 In these cases, logging is not about "logging an event" but rather it's to "dump a value" as an app
 is running to see what's going on (especially when an actual debugger is not available or practical or worth
@@ -136,8 +135,8 @@ to view a "running commentary" (reality checks) of debugging events (i.e. log.x(
 ## Usage
 
 Once [log0 is installed](#installation), it's used in 2 parts:
-1. Developer launches an app which then [logs information as it's executing](#Log-Entries)
-2. Developer can then simultaneously [view those logs from separate window(s)](#View-Logs)
+1. Developer launches an app which then [logs information as it's executing](#logging-entries)
+2. Developer can then simultaneously [view those logs from separate window(s)](#viewing-logs)
 
 ### Installation
 
@@ -151,7 +150,8 @@ If not installed globally, can always use it, in a given project, as: `npx log0 
 ps: you SHOULD INSTALL this package as GLOBAL (-g).
 
 
-### Log Entries
+<a name=logging-entries></a>
+### Logging Entries
 
 use by any means, as follows:
 - `const log = require('log0');`
@@ -273,6 +273,7 @@ usage: log0 [[app=]app-name] [stream directive]*
               - use ellipsis ('...') as wildcards to display streams whose names
                   contain specific words (see below)
 
+<a name=viewinf-logs></a>
 #### Viewing Logs
 
 // basically, from separate terminal windows:
@@ -318,7 +319,7 @@ log0 directory, as per above.
 The following **very low priority** items *may* be considered for future implementation. 
 
 Since the idea is to keep log0 **slim & very lightweight**, the implementation of items below will be based 
-on user demand (if any and only if significant: in other words, let me know!).
+on user demand (if any and only if significant: so, let me know!).
 
 ### Improve this documentation
 
