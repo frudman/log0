@@ -101,11 +101,13 @@ It's **not** a [Captain's Log, Stardate 2020](https://memory-alpha.fandom.com/wi
 
 It's **not** a [log cabin](https://en.wikipedia.org/wiki/Log_cabin)
 
+It's **not** [syrup](https://www.logcabinsyrups.com/)
+
 ## What log0 Is (...to be...)
 
-log0's purpose is for **LIVE**, **IMMEDIATE**, while-you-are-developing, **LOCAL**, console.log-type logging for **server-side node.js development**.
+log0's purpose is for **LIVE**, **IMMEDIATE**, while-you-are-developing, **LOCAL**, *console.log*-like logging for **server-side node.js development**.
 
-And that's where it takes its name:
+And that's where it derives its name:
 - Its logs are *ephemeral*. It logs **0 (zero)** entries permanently
 - It's very simple, slim, and feature-lite, hence **0 as in zero-weight** on your app (double-entendre, anyone?)
 
@@ -304,12 +306,12 @@ usage: log0 [[app=]app-name] [stream directive]*
 
 ## Implementation Notes
 
-log0's "magic" is in using plain text files in the background which can then be viewed by other processes. These files are usually deleted before or after after each use to prevent unbound storage issues (though you have [control over this](#File-Settings), including size of the files before, or if, deleted)
+log0's "magic" is in using plain text files in the background which can then be viewed by other concurrent processes. These files are usually deleted before or after after each use to prevent unbound storage issues (though you have [control over this](#File-Settings), including size of the files before, or if, deleted)
 
-- All logs for ALL apps are kept under the single user's directory `~/.log0` (e.g. `/Users/Frederic/.log0`)
-- The default log (i.e. for u*nnamed apps*) is `log0` and so is kept as `~/.log0/log0`;
+- All logs for ALL apps are kept under the user's home directory `~/.log0` (for example `/Users/Frederic/.log0`)
+- The default log (i.e. for *unnamed apps*) is `log0` and so is kept as `~/.log0/log0`;
 - All other app logs are kept based on their app name: 
-    - e.g. if your app used `log.set({app: 'apple-pie'})`, its logs will be kept under `~/.log0/apple-pie`
+    - e.g. if your app used `log.set({app: 'apple-pie'});`, its logs will be kept under `~/.log0/apple-pie`
 
 Stream files (i.e. the actual log files) are then kept as single files under each app's applicable
 log0 directory, as per above.
