@@ -2,6 +2,9 @@
 
 /* see README.md for usage */
 
+// consider https://www.npmjs.com/package/multilog for language (tags) & piping (for duplicates)
+// - maybe use concept to keep streams open on writing logs?
+
 const fs = require('fs'),
       {dirname,join,sep} = require('path'), // platform-specific
       EventEmitter = require('events');
