@@ -13,58 +13,100 @@ let abc=123, xyz="string", obj={abc,xyz}; // testing
 log('hello there!', obj, abc);
 
 // fancy...
-log.myStream1('some other information', abc, xyz);
+log.myStream1(abc, 'some other information', xyz);
 log.someOtherLog('yet more info still', xyz, abc);
-log.runtime('fancy stuff here', obj, xyz, abc);
-log.myStream1.subStream('more information here', abc);
+log.runtime(obj, 'fancy stuff here', xyz, abc);
+log.myStream1.subStream(xyz, obj, 'more information here', abc);
 log.runtime.error(`whoops, you've done it again!`, xyz);
-log.parsing('parse phse info', obj);
+log.parsing('parse phase info', obj);
 log.parsing.error('sorry, no can do', xyz);
+log.streamingLilies('what is that???');
 
 // neato...
 const perr = log.parsing.error;
 perr('sorry, no can do', xyz);
 ```
 
-3- View each log **simultaneously** in different windows:
-- in app's terminal window: 
-    - `log(...)` statements always go the app's main console (stdout)
+3- View live logs **simultaneously** in different windows:
+- in app's (main, primary) terminal window: 
+    - `log(...)` entries always go to **stdout** (same as console.log)
 - in terminal window #2: `log0 my-stream1`
-    - to view all `log.myStream1(...)` statements
+    - `log.myStream1(...)` entries show up here
 - in terminal window #3: `log0 myStream1.subStream`
-    - to view all `log.myStream1.subStream(...)` statements
+    - `log.myStream1.subStream(...)` entries show up here
 - in terminal window #4: `log0 my-stream1.sub-stream`
     - same as previous one
 - in terminal window #5: `log0 some-other-log`
-- in terminal window #: `log0 `
-- in terminal window #: `log0 `
-- in terminal window #: `log0 `
-- in terminal window #: `log0 `
+    - `log.someOtherLog(...)` entries show up here
+- in terminal window #: `log0 ...error`
+    - **wildcards**: entries from any log with name ending with `error` show up here
+    - this includes `log.runtime.error` and `log.parsing.error` from above
+- in terminal window #: `log0 parsing...`
+    - **wildcards**: entries from any log with name starting with `parsing` show up here
+    - this includes `log.parsing` and `log.parsing.error` from above
+- in terminal window #: `log0 ...stream...`
+    - **wildcards**: entries from any log whose name contains `stream` show up here
+    - this includes `log.myStream1`, `log.myStream1.subStream`, and `log.streamingLilies` from above
 - and so on...
 
 [Full usage instructions below](#Usage)
 
-
 ## Motivation
 
-LOG0 replaces the primary limitation of `console.log` debugging, namely that everything goes to a single stream, namely stdout.
-By simply `log.someStreamNameHere('hello there!')` you can then, from any other terminal window view that on-the-fly stream
-by simply typing this at the command line: `log0 someStreamNameHere`
+LOG0 addresses the primary limitation of `console.log` debugging, namely that everything goes to a single stream, namely **stdout**.
+By simply using `log.yourStreamNameHere('hello there!')` in your node.js app, you can then, from any other terminal window view that on-the-fly live stream
+by typing `log0 yourStreamNameHere` at the command line (or `log0 your-stream-name-here`).
+
+You can always access the main (primary) app's terminal console (stdout) by using the unadorned `log()` function.
+
+You can create any number of "virtual logs" (a.k.a. streams) just by accessing them as a property of the "root" log, such as `log.virtualLogNameHere()`.
+
+You can create sub-logs by simply nesting further, such as `log.virtual1.subVirtual2.subVirtual3.sub4()`.
+
+You can use shorthand notation within any file for legibility. For example:
+```
+log.virtual1.subVirtual2.subVirtual3.sub4('some information here');
+
+// a better way:
+const logx = log.virtual1.subVirtual2.subVirtual3.sub4;
+
+// then:
+logx('some information here');
+```
+
+## What LOG0 Is NOT! (...not to be...)
+
+It's **not** a long term archival logger like typical loggers such as [Winston](https://www.npmjs.com/package/winston) or [Banyan](https://www.npmjs.com/package/bunyan), or for [cloud logging](https://cloud.google.com/logging/docs/setup/nodejs).
+
+It's **not** a [Captain's Log, Stardate 2020](https://memory-alpha.fandom.com/wiki/Category:Captain%27s_logs).
+
+It's **not** a [log cabin](https://en.wikipedia.org/wiki/Log_cabin)
+
+It's **not** a way to [log into something](https://english.stackexchange.com/questions/5302/log-in-to-or-log-into-or-login-to).
+
+## What LOG0 Is! (...to be...)
+
+LOG0's purpose is for **LIVE**, **IMMEDIATE** while-you-are-developing, console.log-type loging.
+
+That's where the name comes from. It's logs are *ephemeral*. It logs 0 (zero) entries permanently.
+
+It's also very simple and feature-lite, hence LOG0 again (sort of a double-entendre).
+
+It's purpose is for **IMMEDIATE** viewing (not archival viewing )
+
+## Implementation Notes
+
+It's "magic" is in using plain text files in the background which can then be viewed by others. These files are deleted after each use to prevent unbound storage problems (though you have control over this, including size of file before or if deleted)
 
 
-A lot of debugging is done using the plain `console.log('hello there')` "method!" 
+// document all setX methods
 
-// TODO: Write this readme doc!
-// TODO: cleanup the samples
+// reserved log props: cannot be used as stream names
+//    log | if | set
+// - but ok to use variants (e.g. IF or Log): stream/filenames will still be lowercase
 
-    // document all setX methods
-
-    // reserved log props: cannot be used as stream names
-    //    log | if | set
-    // - but ok to use variants (e.g. IF or Log): stream/filenames will still be lowercase
-
-    // can extract log's details (e.g. filename) by calling .set() [without any parms]
-    // - e.g. const { name, filename } = log.set();
+// can extract log's details (e.g. filename) by calling .set() [without any parms]
+// - e.g. const { name, filename } = log.set();
 
 // todo: DOCUMENT how/when to specify if log/stream is SYNC or not: matters for fast logging 
 //       - when order of entries matters (else some later entries may end up ahead of earlier ones)
