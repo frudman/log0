@@ -1,3 +1,5 @@
+# log0 (as in "log zero")
+
 ## TL;DR
 
 **Install** globally for easier viewer access:
@@ -22,14 +24,14 @@ log.runtime.warning(`i forgive you this time!`, xyz);
 log.parsing('parse phase #42 info', obj);
 log.parsing.error('sorry, no can do', xyz);
 log.parsing.warning(`it's ok, i'll just keep going`, xyz);
-log.screamingLilies('what is that???');
+log.topical.screamingLilies('what is that???');
 
 // neato...
 const perr = log.parsing.error;
 perr('sorry, no can do', xyz);
 ```
 
-**View** live logs *simultaneously* in different terminal windows:
+**View** live logs **simultaneously** in different terminal windows:
 - in app's (main, primary) terminal window: 
     - `log(...)` entries always go to **stdout** (same as console.log)
 - in window #2: `log0 my-stream1`
@@ -37,7 +39,7 @@ perr('sorry, no can do', xyz);
 - in window #3: `log0 myStream1.subStream`
     - `log.myStream1.subStream(...)` entries show up here
 - in window #4: `log0 my-stream1.sub-stream`
-    - same as previous one
+    - same as window #3
 - in window #5: `log0 some-other-log`
     - `log.someOtherLog(...)` entries show up here
 - in window #6: `log0 ...error`
@@ -48,7 +50,7 @@ perr('sorry, no can do', xyz);
     - this includes `log.parsing` and `log.parsing.error` from above
 - in window #8: `log0 ...s...ream...`
     - **wildcards**: entries from any log whose name contains `s` and `ream` show up here
-    - this includes `log.myStream1`, `log.myStream1.subStream`, `log.streamingLilies`, and `log.screamingLilies` from above
+    - this includes `log.myStream1`, `log.myStream1.subStream`, and `log.topical.screamingLilies` from above
 - in window #9: `log0 ...warning... ...error...`
     - **wildcards**: entries from any log whose name contains `warning` or `error` show up here
     - this includes `log.runtime.error`, `log.runtime.warning`, `log.parsing.error`, and `log.parsing.warning` from above
@@ -58,40 +60,41 @@ perr('sorry, no can do', xyz);
 
 ## Motivation
 
-LOG0 addresses the primary limitation of `console.log` debugging, namely that everything goes to a single stream, namely **stdout**.
+log0 addresses the primary limitation of `console.log` debugging, namely that everything goes to a single stream, namely **stdout**.
 By simply using `log.yourStreamNameHere('hello there!')` in your node.js app, you can then, from any other terminal window view that on-the-fly live stream
-by typing `log0 yourStreamNameHere` at the command line (or `log0 your-stream-name-here`).
+by typing `log0 yourStreamNameHere` at the command line (equivalent to `log0 your-stream-name-here`).
 
-You can always access the main (primary) app's terminal console (stdout) by using the unadorned `log()` function.
+Your app can always access the main (primary) terminal console (stdout) by using the unadorned `log()` function.
 
-You can create any number of "virtual logs" (a.k.a. streams) just by accessing them as a property of the "root" log, such as `log.virtualLogNameHere()`.
+You can create any number of **"virtual logs" (a.k.a. streams)** just by accessing them as a property of the "root" log, such as `log.virtualLogNameHere()`.
 
-You can create sub-logs by simply nesting further, such as `log.virtual1.subVirtual2.subVirtual3.sub4()`.
+You can create sub-logs by simply nesting further, such as `log.virtual1.subVirtual2.subSubVirtual3.sub4()`.
 
-You can use shorthand notation within any file for legibility. For example:
+You can use **shorthand** notation within any .js file for legibility. For example:
 ```
-log.virtual1.subVirtual2.subVirtual3.sub4('some information here');
+// one way...
+log.virtual1.subVirtual2.subSubVirtual3.sub4('some information here');
 
-// a better way:
-const logx = log.virtual1.subVirtual2.subVirtual3.sub4;
+// a better way...
+const logx = log.virtual1.subVirtual2.subSubVirtual3.sub4;
 
-// then:
+// then...
 logx('some information here');
 ```
 
-## What LOG0 Is NOT! (...not to be...)
+## What log0 Is NOT! (...not to be...)
 
-It's **not** a long term archival logger like typical loggers such as [Winston](https://www.npmjs.com/package/winston) or [Banyan](https://www.npmjs.com/package/bunyan), or for [cloud logging](https://cloud.google.com/logging/docs/setup/nodejs).
+It's **not** a long term archival logger such as [Winston](https://www.npmjs.com/package/winston) or [Banyan](https://www.npmjs.com/package/bunyan), or for [Cloud Logging](https://cloud.google.com/logging/docs/setup/nodejs).
+
+It's **not** a way to [log into something](https://english.stackexchange.com/questions/5302/log-in-to-or-log-into-or-login-to).
 
 It's **not** a [Captain's Log, Stardate 2020](https://memory-alpha.fandom.com/wiki/Category:Captain%27s_logs).
 
 It's **not** a [log cabin](https://en.wikipedia.org/wiki/Log_cabin)
 
-It's **not** a way to [log into something](https://english.stackexchange.com/questions/5302/log-in-to-or-log-into-or-login-to).
+## What log0 Is! (...to be...)
 
-## What LOG0 Is! (...to be...)
-
-LOG0's purpose is for **LIVE**, **IMMEDIATE** while-you-are-developing, console.log-type loging (logging?).
+LOG0's purpose is for **LIVE**, **IMMEDIATE** while-you-are-developing, **LOCAL**, console.log-type logging.
 
 That's where the name comes from. It's logs are *ephemeral*. It logs **0 (zero)** entries permanently.
 
