@@ -255,7 +255,8 @@ can only do this ONCE per runtime per app
 
 ### View Logs
 
-Like linux tail but for multiple files at once inclusing non-existing ones yet
+The `log0` viewer is like linux `tail` command but for multiple files at once including non-existing ones yet (e.g. where there may
+not have been an entry into the error stream, say);)
 
 
 usage: log0 [[app=]app-name] [stream directive]*
@@ -302,22 +303,26 @@ usage: log0 [[app=]app-name] [stream directive]*
 
 ## Implementation Notes
 
-log0's "magic" is in using plain text files in the background which can then be viewed by other processes. These files are deleted usually before or after after each use to prevent unbounded storage problems (though you have [control over this](#File-Settings), including size of the files before or if deleted)
+log0's "magic" is in using plain text files in the background which can then be viewed by other processes. These files are usually deleted before or after after each use to prevent unbound storage issues (though you have [control over this](#File-Settings), including size of the files before, or if, deleted)
 
-All logs for ALL apps are kept under the single user's directory `~/.log0`;
-The default log (i.e. for unnamed apps) is kept as `~/.log0/log0`;
-All other app logs are kept based on their app name: e.g. `~/.log0/your-app-name-here`
+- All logs for ALL apps are kept under the single user's directory `~/.log0` (e.g. `/Users/Frederic/.log0`)
+- The default log (i.e. for u*nnamed apps*) is `log0` and so is kept as `~/.log0/log0`;
+- All other app logs are kept based on their app name: 
+    - e.g. if your app used `log.set({app: 'apple-pie'})`, its logs will be kept under `~/.log0/apple-pie`
 
 Stream files (i.e. the actual log files) are then kept as single files under each app's applicable
 log0 directory, as per above.
 
-
 ## TODOs
 
-The following **very low priority** items *may* considered for future implementation. 
+The following **very low priority** items *may* be considered for future implementation. 
 
 Since the idea is to keep log0 **slim & very lightweight**, the implementation of items below will be based 
 on user demand (if any and only if significant: in other words, let me know!).
+
+### Improve this documentation
+
+Like it says... 😀
 
 ### "Tee" Log Entries
 
