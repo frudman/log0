@@ -62,10 +62,10 @@ perr('sorry, no can do', xyz);
 
 log0 addresses the primary limitation of `console.log` debugging, namely that everything goes to a single stream, **stdout**.
 
-Use `log.yourStreamNameHere('hello there!')` in your node.js app, so that you can then, *from any other terminal window* **view that on-the-fly live stream**
-by typing `log0 yourStreamNameHere` at the command line (equivalent to `log0 your-stream-name-here`).
+Use `log.yourStreamNameHere('hello there!')` in your node.js app, so that you can then, *from any other terminal window*, **view that on-the-fly live stream**
+by simply typing `log0 yourStreamNameHere` at the command line (equivalent to `log0 your-stream-name-here`).
 
-Your app can always access the main (primary) terminal console (stdout) by using the unadorned `log()` function.
+Your node.js app can always access the main (primary) terminal console (stdout) by using the unadorned `log()` function.
 
 You can create any number of **"virtual logs" (a.k.a. streams)** just by accessing them as a property of the "root" log, such as `log.virtualLogNameHere()`.
 
@@ -89,9 +89,19 @@ It's **not** a long term archival logger such as [Winston](https://www.npmjs.com
 
 It's **not** a way to [log into something](https://english.stackexchange.com/questions/5302/log-in-to-or-log-into-or-login-to).
 
+It's **not** a browser-based utility.
+
 It's **not** a [Captain's Log, Stardate 2020](https://memory-alpha.fandom.com/wiki/Category:Captain%27s_logs).
 
 It's **not** a [log cabin](https://en.wikipedia.org/wiki/Log_cabin)
+
+## What log0 Is (...to be...)
+
+LOG0's purpose is for **LIVE**, **IMMEDIATE**, while-you-are-developing, **LOCAL**, console.log-type logging for **server-side node.js development**.
+
+And that's where the name comes from. It's logs are *ephemeral*. It logs **0 (zero)** entries permanently.
+
+It's also very simple, slim, and feature-lite, hence **0 as in zero-weight** on your app (in a sort of a double-entendre).
 
 ## Short Story Long
 
@@ -118,18 +128,10 @@ and you may want separate windows (i.e. terminals) to see each in realtime
 In particular, when you do fancy window-like handling of main stdout, you may want other windows
 to dump a "running commentary" (reality checks) of debugging events (i.e. log.x() statements);
 
-## What log0 Is (...to be...)
-
-LOG0's purpose is for **LIVE**, **IMMEDIATE**, while-you-are-developing, **LOCAL**, console.log-type logging.
-
-That's where the name comes from. It's logs are *ephemeral*. It logs **0 (zero)** entries permanently.
-
-It's also very simple and feature-lite, hence log0 again (in a sort of a double-entendre).
-
 ## Usage
 
 - [Install](#Installation)
-- [How to Log in an App](#Log-Entries)
+- [How to Log inside an App](#Log-Entries)
 - [How to View Logs](#View-Logs)
 
 ### Installation
@@ -141,47 +143,60 @@ using the `log0` command. For example: `log0 builder ...error`
 
 If not installed globally, can always use it, in a given project, as: `npx log0 ...error`
 
-- SHOULD INSTALL this package as GLOBAL (-g) in order to use its viewer directly (i.e. `prompt:> log0 ...`)
-- else, can use `prompt:> npx log0 ...`
+ps: you SHOULD INSTALL this package as GLOBAL (-g).
 
 
 ### Log Entries
 
-`import {log} from 'log0';`
+use by any means, as follows:
+- `const log = require('log0');`
+- `const {log,lo0} = require('log0');` [both are the same, for convenience]
 
-// reserved log props: cannot be used as stream names
-//    log | if | set
-// - but ok to use variants (e.g. IF or Log): stream/filenames will still be lowercase
+Can create on-the-fly logs as follows:
+- `const {normalStuff, error, warning, neverMind, fancyBee} = log;`
+    - creates virtual log functions, that can be used as:
+        ```
+        normalStuff('log message here');
+        error('log message here');
+        warning('log message here');
+        neverMind('log message here');
+        fancyBee('log message here');
+        ```
 
-// can extract log's details (e.g. filename) by calling .set() [without any parms]
-// - e.g. const { name, filename } = log.set();
 
-// document all setX methods
+#### Dynamic Streams (or "virtual logs")
 
-If no appID, use log0
-log() or log0() goto console always
-ALL OTHER go to streams: log.xyz()
+A stream is dynamically created by simply accessing it as a property on the root `log()` function.
 
-in other words:
-log(...) ALWAYS goes to main/primary console
-log.abc(...) NEVER goes to main/primary console: need log0 viewer (on another terminal window) to view it
-
-If setApp, do early on
-can only do this ONCE per runtime per app
+So, to create a stream named abcxyz, just write to it using `log.abcxyz(...your stuff here...)`.
 
 // log(...)     to log to .log0/logs/log0/stdout
 // log.xyz(...) to log to .log0/logs/log0/xyz
 // log.setApp('abc').log(...) to log to .log0/logs/abc/xyz
 // log.setApp('abc').xyz(...) to log to .log0/logs/abc/xyz
 
-// DEFAULT LOG is done to main console
-// ALL OTHER LOGGING (i.e. new streams) done to files: is that correct???
-
-// ALL log files recycled (deleted/restarted) after certain size (else would grow to LARGE SIZES quickly)
-
-// OPTION to ALSO go directly to console for 1 or more of the streams?
 
 
+### Reserved Stream Names (invlaid stream names)
+
+// reserved log props: cannot be used as stream names
+//    log | if | set
+// - but ok to use variants (e.g. IF or Log): stream/filenames will still be lowercase
+
+Also should be valid file names since used mostly as is for that
+
+### Stream Name Mangling
+
+It's minimal and used to treat camelNotation as camel-notation for the files
+then dash-notation back to camelNotation for stream names within the app.
+
+### Stream Details
+
+For any given log stream, you can retrieve information for it (not sure that purpose other than to view
+the actual filename of that log)
+
+// can extract log's details (e.g. filename) by calling .set() [without any parms]
+// - e.g. const { name, filename } = log.set();
 
 
 #### Shorthand
@@ -193,6 +208,34 @@ can only do this ONCE per runtime per app
 #### Custom Formatting
 // - setFormatter: takes args or computed string and returns string or nothing
 //      - also acts as a filter (i.e. return undefined to NOT log an entry)
+
+
+#### Redirect Console.Log
+
+#### Root Log Output
+// DEFAULT LOG is done to main console
+// ALL OTHER LOGGING (i.e. new streams) done to files: is that correct???
+
+log() or log0() goto console always
+ALL OTHER go to streams: log.xyz()
+
+in other words:
+log(...) ALWAYS goes to main/primary console
+log.abc(...) NEVER goes to main/primary console: need log0 viewer (on another terminal window) to view it
+
+
+#### App-specific Logging
+
+If no appID, use log0
+
+If setApp, do early on
+can only do this ONCE per runtime per app
+
+
+
+#### Recycling
+// ALL log files recycled (deleted/restarted) after certain size (else would grow to LARGE SIZES quickly)
+
 
 #### Sync or Async Mode
 
@@ -254,22 +297,29 @@ usage: log0 [[app=]app-name] [stream directive]*
 
 ## Implementation Notes
 
-It's "magic" is in using plain text files in the background which can then be viewed by others. These files are deleted after each use to prevent unbound storage problems (though you have [control over this](#File-Settings), including size of the files before or if deleted)
+log0's "magic" is in using plain text files in the background which can then be viewed by other processes. These files are deleted usually before or after after each use to prevent unbounded storage problems (though you have [control over this](#File-Settings), including size of the files before or if deleted)
+
+All logs for ALL apps are kept under the single user's directory `~/.log0`;
+The default log (i.e. for unnamed apps) is kept as `~/.log0/log0`;
+All other app logs are kept based on their app name: e.g. `~/.log0/your-app-name-here`
+
+Stream files (i.e. the actual log files) are then kept as single files under each app's applicable
+log0 directory, as per above.
 
 
 ## TODOs
 
-The following **very low priority** items considered for future implementation. 
+The following **very low priority** items *may* considered for future implementation. 
 
-Since the idea is to keep log0 **very lightweight**, the implementation of items below will be based 
-on user demand (if any, if significant: let me know).
+Since the idea is to keep log0 **slim & very lightweight**, the implementation of items below will be based 
+on user demand (if any and only if significant: in other words, let me know!).
 
-### Duplicate Log Entries
+### "Tee" Log Entries
 
-a feature to allow a stream (e.g. log.streamX()) to be written out to simulataneous files, or to be sent
-to multiple destinations.
+A feature to allow a stream (e.g. log.streamX()) to be written out to simulataneous files, or to be sent
+to multiple destinations. A little like the `tee` feature in Linux.
 
-This could include other files, or event being emitted, or a more permanent syslog.
+This could include other files, or event being emitted, or a more permanent syslog, or even back to main console again.
 
 **possible implementation:** `log.streamx.set({duplicate: {...parms here...}});`
 
@@ -277,7 +327,7 @@ This could include other files, or event being emitted, or a more permanent sysl
 
 A feature to allow a specific log/stream (e.g. log.streamX()) to be kept open 
 using (for example) `fs.createWriteStream(filename, { flags: 'a', encoding: 'utf8' })`
-instead of being one-off appended on every call currently (`fs.appendFile(filename, logEntry)`).
+instead of being one-off appended on every call, as done currently (`fs.appendFile(filename, logEntry)`).
 
 This could improve performance in high-volume, low-latency cases, where a lot of log entries
 are being generated in a very short amount of time (e.g. sub-milliseconds);
