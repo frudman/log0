@@ -138,6 +138,8 @@ function createLogger({name, parent, lvl = 0} = {}) {
     const streams = {}; // substreams of this logger
     const aliases = {}; // aliased for substreams (e.g. warn same as warning)
 
+    const immutables = {}; // keep log0's exports here
+
     // all stream & alias names are normalized (e.g. spaces and camelNotation to dashes)
     const normalize = name => name.replace(/\s+/g,'-').replace(/[a-z][A-Z]/g, m => `${m[0]}-${m[1].toLowerCase()}`);
 
@@ -188,6 +190,8 @@ function createLogger({name, parent, lvl = 0} = {}) {
 
         setFileOptions,
         setConsoleRedirect,
+
+        setImmutables(imm) { Object.entries(imm).forEach(([k,v]) => immutables[k] = v); },
     }
 
     function setx(...opts) {
@@ -392,6 +396,9 @@ function createLogger({name, parent, lvl = 0} = {}) {
             if (prop === streamFileNameProp) return filename;
             if (prop === aliasesProp) return aliases;
 
+            // give immutable props priority over all else
+            if (prop in immutables) return immutables[prop]; // use otherwise-unused target for storage
+
             // give user-defined (i.e. custom) props priority over streams
             if (prop in target) return target[prop]; // use otherwise-unused target for storage
 
@@ -424,11 +431,14 @@ function createLogger({name, parent, lvl = 0} = {}) {
 }
 
 // the ROOT logger for an app
-const log0 = createLogger();
+const log0 = createLogger(); // also the default export
 
-module.exports = {
+module.exports = log0.set({immutables: {
+
+    // allows for `const {throwe} = require(;log0');` usage
+
     log0,
-    log: log0, // alias for convenience
+    log: log0, // common alias
     defaultAppID,
 
     consoleString,
@@ -446,4 +456,4 @@ module.exports = {
     // more useful tidbits
     toDebugString,
     toUnicode,
-}
+}});

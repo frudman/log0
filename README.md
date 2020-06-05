@@ -1,3 +1,59 @@
+## TL;DR
+
+1- It's best to install globally for simpler log0 viewer access later:
+
+`npm install -g log0` 
+
+2- Write to your logs from any **NODE.JS** app: 
+```
+// obviously
+const log = require('log0');
+
+// then...
+log('hello there!');
+
+// fancy...
+log.myStream1('some other information');
+log.someOtherLog('yet more info still');
+log.runtime('fancy stuff here');
+log.myStream1.subStream('more information here');
+log.runtime.error(`whoops, you've done it again!`);
+log.parsing('parse phse info');
+log.parsing.error('sorry, no can do');
+
+// neato...
+const perr = log.parsing.error;
+perr('sorry, no can do');
+```
+
+3- View each log **simultaneously** in different windows:
+- in app's terminal window: 
+    - `log(...)` statements always go the app's main console (stdout)
+- in terminal window #2: `log0 my-stream1`
+    - to view all `log.myStream1(...)` statements
+- in terminal window #3: `log0 myStream1.subStream`
+    - to view all `log.myStream1.subStream(...)` statements
+- in terminal window #4: `log0 my-stream1.sub-stream`
+    - same as previous one
+- in terminal window #5: `log0 some-other-log`
+- in terminal window #: `log0 `
+- in terminal window #: `log0 `
+- in terminal window #: `log0 `
+- in terminal window #: `log0 `
+- and so on...
+
+[Full usage instructions below](#Usage)
+
+
+## Motivation
+
+LOG0 replaces the primary limitation of `console.log` debugging, namely that everything goes to a single stream, namely stdout.
+By simply `log.someStreamNameHere('hello there!')` you can then, from any other terminal window view that on-the-fly stream
+by simply typing this at the command line: `log0 someStreamNameHere`
+
+
+A lot of debugging is done using the plain `console.log('hello there')` "method!" 
+
 // TODO: Write this readme doc!
 // TODO: cleanup the samples
 
@@ -83,9 +139,15 @@ can only do this ONCE per runtime per app
     //      - also acts as a filter (i.e. return undefined to NOT log an entry)
 
 
+## Usage
+
+### Log Usage (how to log)
 
 
-## Viewer Usage `cmd> log0 ...`
+### Viewer Usage (how to view live logs)
+
+`cmd> log0 ...`
+
 usage: log0 [[app=]app-name] [stream directive]*
    where: live logs from 'app-name' are displayed
               - 'app=' prefix optional if 'app-name' dir exists already

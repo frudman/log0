@@ -6,7 +6,7 @@
 
 // npm list -g log0 to view installation (npm update -g log0)
 
-const {log0:log} = require('log0');//./index.js'); // MUST `require('log0');` when installed
+const log = require('log0');//./index.js'); // MUST `require('log0');` when installed
 
 // plain log() shows up on console, always
 log(`Hello World!`);
