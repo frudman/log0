@@ -2,11 +2,11 @@
 
 ## TL;DR
 
-**Install** globally for easier viewer access:
+**0) Install** globally for easier viewer access:
 
 `npm install -g log0` 
 
-**Write** to your logs from any **node.js** app: 
+**1) Write** to your logs from any **node.js** app: 
 ```
 const log = require('log0'); // obviously
 let abc=123, xyz="string", obj={abc,xyz}; // testing
@@ -31,7 +31,7 @@ const perr = log.parsing.error;
 perr('sorry, no can do', xyz);
 ```
 
-**View** live logs **simultaneously** in different terminal windows:
+**2) View** live logs **simultaneously** in different terminal windows:
 - in app's (main, primary) terminal window: 
     - `log(...)` entries always go to **stdout** (same as console.log)
 - in window #2: `log0 my-stream1`
