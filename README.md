@@ -1,6 +1,6 @@
 ## TL;DR
 
-1- It's best to install globally for simpler log0 viewer access later:
+1- Install globally for easier viewer access:
 
 `npm install -g log0` 
 
@@ -8,22 +8,23 @@
 ```
 // obviously
 const log = require('log0');
+let abc=123, xyz="string", obj={abc,xyz}; // for testing
 
 // then...
-log('hello there!');
+log('hello there!', obj, abc);
 
 // fancy...
-log.myStream1('some other information');
-log.someOtherLog('yet more info still');
-log.runtime('fancy stuff here');
-log.myStream1.subStream('more information here');
-log.runtime.error(`whoops, you've done it again!`);
-log.parsing('parse phse info');
-log.parsing.error('sorry, no can do');
+log.myStream1('some other information', abc, xyz);
+log.someOtherLog('yet more info still', xyz, abc);
+log.runtime('fancy stuff here', obj, xyz, abc);
+log.myStream1.subStream('more information here', abc);
+log.runtime.error(`whoops, you've done it again!`, xyz);
+log.parsing('parse phse info', obj);
+log.parsing.error('sorry, no can do', xyz);
 
 // neato...
 const perr = log.parsing.error;
-perr('sorry, no can do');
+perr('sorry, no can do', xyz);
 ```
 
 3- View each log **simultaneously** in different windows:
