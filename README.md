@@ -323,7 +323,7 @@ The following **very low priority** items *may* be considered for future impleme
 Since the idea is to keep log0 **slim & very lightweight**, the implementation of items below will be based 
 on user demand (if any and only if significant: so, let me know!).
 
-### Improve this documentation
+### Improve this documentation and finish example.js
 
 Like it says... 😀
 
