@@ -6,9 +6,8 @@
 
 2- Write to your logs from any **NODE.JS** app: 
 ```
-// obviously
-const log = require('log0');
-let abc=123, xyz="string", obj={abc,xyz}; // for testing
+const log = require('log0'); // obviously
+let abc=123, xyz="string", obj={abc,xyz}; // testing
 
 // then...
 log('hello there!', obj, abc);
