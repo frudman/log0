@@ -1,10 +1,10 @@
 ## TL;DR
 
-1- Install globally for easier viewer access:
+**Install** globally for easier viewer access:
 
 `npm install -g log0` 
 
-2- Write to your logs from any **NODE.JS** app: 
+**Write** to your logs from any **NODE.JS** app: 
 ```
 const log = require('log0'); // obviously
 let abc=123, xyz="string", obj={abc,xyz}; // testing
@@ -18,8 +18,10 @@ log.someOtherLog('yet more info still', xyz, abc);
 log.runtime(obj, 'fancy stuff here', xyz, abc);
 log.myStream1.subStream(xyz, obj, 'more information here', abc);
 log.runtime.error(`whoops, you've done it again!`, xyz);
+log.runtime.warning(`i forgive you this time!`, xyz);
 log.parsing('parse phase info', obj);
 log.parsing.error('sorry, no can do', xyz);
+log.parsing.warning(`it's ok, i'll just keep going`, xyz);
 log.streamingLilies('what is that???');
 
 // neato...
@@ -27,26 +29,29 @@ const perr = log.parsing.error;
 perr('sorry, no can do', xyz);
 ```
 
-3- View live logs **simultaneously** in different windows:
+**View** live logs *simultaneously* in different terminal windows:
 - in app's (main, primary) terminal window: 
     - `log(...)` entries always go to **stdout** (same as console.log)
-- in terminal window #2: `log0 my-stream1`
+- in window #2: `log0 my-stream1`
     - `log.myStream1(...)` entries show up here
-- in terminal window #3: `log0 myStream1.subStream`
+- in window #3: `log0 myStream1.subStream`
     - `log.myStream1.subStream(...)` entries show up here
-- in terminal window #4: `log0 my-stream1.sub-stream`
+- in window #4: `log0 my-stream1.sub-stream`
     - same as previous one
-- in terminal window #5: `log0 some-other-log`
+- in window #5: `log0 some-other-log`
     - `log.someOtherLog(...)` entries show up here
-- in terminal window #: `log0 ...error`
+- in window #6: `log0 ...error`
     - **wildcards**: entries from any log with name ending with `error` show up here
     - this includes `log.runtime.error` and `log.parsing.error` from above
-- in terminal window #: `log0 parsing...`
+- in window #7: `log0 parsing...`
     - **wildcards**: entries from any log with name starting with `parsing` show up here
     - this includes `log.parsing` and `log.parsing.error` from above
-- in terminal window #: `log0 ...stream...`
+- in window #8: `log0 ...stream...`
     - **wildcards**: entries from any log whose name contains `stream` show up here
     - this includes `log.myStream1`, `log.myStream1.subStream`, and `log.streamingLilies` from above
+- in window #9: `log0 ...warning... ...error`
+    - **wildcards**: entries from any log whose name contains `warning` or `error` show up here
+    - this includes `log.runtime.error`, `log.runtime.warning`, `log.parsing.error`, and `log.parsing.warning` from above
 - and so on...
 
 [Full usage instructions below](#Usage)
@@ -86,17 +91,17 @@ It's **not** a way to [log into something](https://english.stackexchange.com/que
 
 ## What LOG0 Is! (...to be...)
 
-LOG0's purpose is for **LIVE**, **IMMEDIATE** while-you-are-developing, console.log-type loging.
+LOG0's purpose is for **LIVE**, **IMMEDIATE** while-you-are-developing, console.log-type loging (logging?).
 
-That's where the name comes from. It's logs are *ephemeral*. It logs 0 (zero) entries permanently.
+That's where the name comes from. It's logs are *ephemeral*. It logs **0 (zero)** entries permanently.
 
-It's also very simple and feature-lite, hence LOG0 again (sort of a double-entendre).
-
-It's purpose is for **IMMEDIATE** viewing (not archival viewing )
+It's also very simple and feature-lite, hence LOG0 again (in a sort of a double-entendre).
 
 ## Implementation Notes
 
 It's "magic" is in using plain text files in the background which can then be viewed by others. These files are deleted after each use to prevent unbound storage problems (though you have control over this, including size of file before or if deleted)
+
+## Installation
 
 
 // document all setX methods
