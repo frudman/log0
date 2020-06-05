@@ -1,6 +1,6 @@
 {
   "name": "log0",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "a minimal local logger that improves on console.log for node.js development",
   "bin": {
     "log0": "viewer.js",
@@ -14,7 +14,6 @@
   },
   "scripts": {
     "test": "node example.js",
-    "install": "chmod +x sample*"
   },
   "keywords": [
     "log",
