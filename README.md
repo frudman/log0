@@ -4,7 +4,7 @@
 
 `npm install -g log0` 
 
-**Write** to your logs from any *node.js* app: 
+**Write** to your logs from any **node.js** app: 
 ```
 const log = require('log0'); // obviously
 let abc=123, xyz="string", obj={abc,xyz}; // testing
