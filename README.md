@@ -1,5 +1,10 @@
 # log0 (as in "log zero")
 
+- [Purpose](#motivation)
+- [Usage](#usage)
+- [JUST SHOW ME!](#showme)
+
+<a name=showme></a>
 ## TL;DR
 
 **0) Install** globally for easier viewer access:
@@ -58,6 +63,7 @@ perr('sorry, no can do', xyz);
 
 [Full usage instructions below](#Usage)
 
+<a name=motivation></a>
 ## Motivation
 
 log0 addresses the primary limitation of `console.log` debugging, namely that everything goes to a single stream, **stdout**.
@@ -128,11 +134,12 @@ and you may want separate windows (i.e. terminals) to see each in realtime
 In particular, when you do fancy window-like handling of main stdout, you may want other windows
 to dump a "running commentary" (reality checks) of debugging events (i.e. log.x() statements);
 
+<a name=usage></a>
 ## Usage
 
-- [Install](#Installation)
-- [How to Log inside an App](#Log-Entries)
-- [How to View Logs](#View-Logs)
+Once [log0 is installed](#installation), it's used in 2 parts:
+1- Developer launches an app which then [logs information as it's executing](#Log-Entries)
+2- Developer can then simultaneously [view those logs from separate window(s)](#View-Logs)
 
 ### Installation
 
