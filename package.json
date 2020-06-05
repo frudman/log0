@@ -13,7 +13,7 @@
     "url": "git@github.com:frudman/log0.git"
   },
   "scripts": {
-    "test": "node example.js",
+    "test": "node example.js"
   },
   "keywords": [
     "log",
