@@ -126,8 +126,13 @@ That's where the name comes from. It's logs are *ephemeral*. It logs **0 (zero)*
 
 It's also very simple and feature-lite, hence log0 again (in a sort of a double-entendre).
 
+## Usage
 
-## Installation
+- [Install](#Installation)
+- [How to Log in an App](#Log-Entries)
+- [How to View Logs](#View-Logs)
+
+### Installation
 
 `npm install -g log0` 
 
@@ -139,9 +144,8 @@ If not installed globally, can always use it, in a given project, as: `npx log0 
 - SHOULD INSTALL this package as GLOBAL (-g) in order to use its viewer directly (i.e. `prompt:> log0 ...`)
 - else, can use `prompt:> npx log0 ...`
 
-## Usage
 
-### Log Usage (how to log)
+### Log Entries
 
 `import {log} from 'log0';`
 
@@ -201,7 +205,7 @@ can only do this ONCE per runtime per app
 #### File Settings
 
 
-### Viewer Usage (how to view live logs)
+### View Logs
 
 Like linux tail but for multiple files at once inclusing non-existing ones yet
 
