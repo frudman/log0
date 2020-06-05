@@ -1,6 +1,6 @@
 {
   "name": "log0",
-  "version": "0.4.7",
+  "version": "0.5.1",
   "description": "a minimal local logger that improves on console.log for node.js development",
   "bin": {
     "log0": "viewer.js",
