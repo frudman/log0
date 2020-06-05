@@ -66,20 +66,20 @@ perr('sorry, no can do', xyz);
 <a name=motivation></a>
 ## Motivation
 
-log0 addresses the primary limitation of `console.log` debugging, namely that everything goes to a single stream, **stdout**.
+log0 addresses the primary limitation of debugging with `console.log`, namely that everything goes to a single stream, **stdout**.
 
-Use `log.yourStreamNameHere('hello there!')` in your node.js app, so that you can then, *from any other terminal window*, **view that on-the-fly live stream**
-by simply typing `log0 yourStreamNameHere` at the command line (equivalent to `log0 your-stream-name-here`).
+Instead, use `log.yourLogNameHere('hello there!')` in your node.js app, so that you can then, *from any other [multiple] terminal window(s)*, **view that on-the-fly live stream** by simply typing `log0 yourLogNameHere` at the command line (equivalent to `log0 your-log-name-here`).
 
 Your node.js app can always access the main (primary) terminal console (stdout) by using the unadorned `log()` function.
 
-You can create any number of **"virtual logs" (a.k.a. streams)** just by accessing them as a property of the "root" log, such as `log.virtualLogNameHere()`.
+You can create any number of **"virtual logs" (a.k.a. streams)** just by accessing them as *dynamic* properties 
+of the "root" log, such as `log.aVirtualLogNameHere()`.
 
-You can create sub-logs by simply nesting further, such as `log.virtual1.subVirtual2.subSubVirtual3.sub4()`.
+You can create "sub-logs" by simply nesting further, such as `log.virtual1.subVirtual2.subSubVirtual3.sub4()`.
 
-You can use [**shorthand**](#Shorthand) notation within any .js file for legibility. For example:
+You can use a [**shorthand**](#Shorthand) notation within any .js file for legibility. For example:
 ```
-// one way...
+// long way...
 log.virtual1.subVirtual2.subSubVirtual3.sub4('some information here');
 
 // a better way...
@@ -103,43 +103,41 @@ It's **not** a [log cabin](https://en.wikipedia.org/wiki/Log_cabin)
 
 ## What log0 Is (...to be...)
 
-LOG0's purpose is for **LIVE**, **IMMEDIATE**, while-you-are-developing, **LOCAL**, console.log-type logging for **server-side node.js development**.
+log0's purpose is for **LIVE**, **IMMEDIATE**, while-you-are-developing, **LOCAL**, console.log-type logging for **server-side node.js development**.
 
-And that's where the name comes from. It's logs are *ephemeral*. It logs **0 (zero)** entries permanently.
+And that's where the name comes from. Its logs are *ephemeral*. It logs **0 (zero)** entries permanently.
 
 It's also very simple, slim, and feature-lite, hence **0 as in zero-weight** on your app (in a sort of a double-entendre).
 
 ## Short Story Long
 
 Logging means different things to different people: for production apps, logging is meant
-to record events as they happen for later analysis (esp large apps with cloud-based logging)
+to record events as they happen for later analysis (especially large apps with cloud-based logging)
 for bug extraction and performance improvement or feature enhancement.
 
 For developers, the stage of development (beta, production, alpha, or early-pre-alpha) affects the type 
-and purpose of "log entries."
-
-Often, early on, "logging" is really shortform debugging (not involving an actual debugger);
+and purpose of "log entries." Often, early on, "logging" is really **shortform debugging** (not involving an actual debugger);
 
 It doesn't replace a debugger, but rather "console.log" is just another tool in the toolbelt.
 
 In these cases, logging is not about "logging an event" but rather it's to "dump a value" as an app
-is running to see what's going on (esp when an actual debugger is not available or practical or worth
+is running to see what's going on (especially when an actual debugger is not available or practical or worth
 that particular effort).
 
 Basically, just plain 'console.log' something and see if it 'looks right.'
 
-For these times, different parts of the app may be generating different amount of information
-and you may want separate windows (i.e. terminals) to see each in realtime
+For these times, different parts of the app may be generating different volumes of information
+and you may want separate windows (i.e. terminals) to see each in realtime.
 
-In particular, when you do fancy window-like handling of main stdout, you may want other windows
-to dump a "running commentary" (reality checks) of debugging events (i.e. log.x() statements);
+In particular, when you do fancy window-like handling of main stdout, you may want to use other windows
+to view a "running commentary" (reality checks) of debugging events (i.e. log.x() statements) within your app.
 
 <a name=usage></a>
 ## Usage
 
 Once [log0 is installed](#installation), it's used in 2 parts:
-1- Developer launches an app which then [logs information as it's executing](#Log-Entries)
-2- Developer can then simultaneously [view those logs from separate window(s)](#View-Logs)
+1. Developer launches an app which then [logs information as it's executing](#Log-Entries)
+2. Developer can then simultaneously [view those logs from separate window(s)](#View-Logs)
 
 ### Installation
 
