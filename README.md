@@ -10,19 +10,19 @@ const log = require('log0'); // obviously
 let abc=123, xyz="string", obj={abc,xyz}; // testing
 
 // then...
-log('hello there!', obj, abc);
+log('hello there!', abc, xyz, obj);
 
 // fancy...
 log.myStream1(abc, 'some other information', xyz);
-log.someOtherLog('yet more info still', xyz, abc);
+log.someOtherLog('more info still', xyz, abc);
 log.runtime(obj, 'fancy stuff here', xyz, abc);
-log.myStream1.subStream(xyz, obj, 'more information here', abc);
+log.myStream1.subStream(xyz, obj, 'yet more information here', abc);
 log.runtime.error(`whoops, you've done it again!`, xyz);
 log.runtime.warning(`i forgive you this time!`, xyz);
-log.parsing('parse phase info', obj);
+log.parsing('parse phase #42 info', obj);
 log.parsing.error('sorry, no can do', xyz);
 log.parsing.warning(`it's ok, i'll just keep going`, xyz);
-log.streamingLilies('what is that???');
+log.screamingLilies('what is that???');
 
 // neato...
 const perr = log.parsing.error;
@@ -46,10 +46,10 @@ perr('sorry, no can do', xyz);
 - in window #7: `log0 parsing...`
     - **wildcards**: entries from any log with name starting with `parsing` show up here
     - this includes `log.parsing` and `log.parsing.error` from above
-- in window #8: `log0 ...stream...`
-    - **wildcards**: entries from any log whose name contains `stream` show up here
-    - this includes `log.myStream1`, `log.myStream1.subStream`, and `log.streamingLilies` from above
-- in window #9: `log0 ...warning... ...error`
+- in window #8: `log0 ...s...ream...`
+    - **wildcards**: entries from any log whose name contains `s` and `ream` show up here
+    - this includes `log.myStream1`, `log.myStream1.subStream`, `log.streamingLilies`, and `log.screamingLilies` from above
+- in window #9: `log0 ...warning... ...error...`
     - **wildcards**: entries from any log whose name contains `warning` or `error` show up here
     - this includes `log.runtime.error`, `log.runtime.warning`, `log.parsing.error`, and `log.parsing.warning` from above
 - and so on...
