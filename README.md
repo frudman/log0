@@ -68,9 +68,9 @@ perr('sorry, no can do', xyz);
 
 log0 addresses the primary limitation of debugging with `console.log`, namely that everything goes to a single stream, **stdout**.
 
-Instead, use `log.yourLogNameHere('hello there!')` in your node.js app, so that you can then, *from any other [multiple] terminal window(s)*, **view that on-the-fly live stream** by simply typing `log0 yourLogNameHere` at the command line (equivalent to `log0 your-log-name-here`).
+Instead, use `log.yourLogNameHere('hello there!')` in your node.js app, so that you can then, *from any other [multiple] terminal window(s)*, **view that log live, on-the-fly stream** by simply typing `log0 yourLogNameHere` at the command line (or `log0 your-log-name-here`).
 
-Your node.js app can always access the main (primary) terminal console (stdout) by using the unadorned `log()` function.
+Your node.js app can always write to the main (primary) terminal console (stdout) by using the unadorned `log()` function.
 
 You can create any number of **"virtual logs" (a.k.a. streams)** just by accessing them as *dynamic* properties 
 of the "root" log, such as `log.aVirtualLogNameHere()`.
@@ -107,9 +107,10 @@ It's **not** [syrup](https://www.logcabinsyrups.com/)
 
 log0's purpose is for **LIVE**, **IMMEDIATE**, while-you-are-developing, **LOCAL**, *console.log*-like logging for **server-side node.js development**.
 
-And that's where it derives its name:
+And that's where it derives its name from:
 - Its logs are *ephemeral*. It logs **0 (zero)** entries permanently
-- It's very simple, slim, and feature-lite, hence **0 as in zero-weight** on your app (double-entendre, anyone?)
+- It's very simple, slim, and feature-lite, so adds **0 as in zero-weight** to your app
+- It's logs are meant to be viewed immidiately, with **0 as in zero** delay!
 
 ## Short Story Long
 
