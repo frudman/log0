@@ -168,6 +168,7 @@ function createLogger({name, parent, lvl = 0} = {}) {
     });
 
     function actualLogger(...args) {
+
         const shouldLog = enabled === true || (enabled === false ? false : enabled(...args));
         if (shouldLog) {
             if (isRoot(lvl))
@@ -199,8 +200,13 @@ function createLogger({name, parent, lvl = 0} = {}) {
 
     function setx(...opts) {
         if (opts.length === 0) // no args to get back current settings
-            return { name, fullname: loggerName(), filename, appID: singletonAppID, enabled,
-                mainPrefix, consoleOptions, tracing, formatter, streams, aliases };
+            return { 
+                log0Version: require('./package.json').version,
+                enabled,
+                name, fullname: loggerName(), filename, 
+                appID: singletonAppID, 
+                mainPrefix, consoleOptions, tracing, formatter, streams, aliases 
+            };
 
         for (const optx of opts)
             for (const [k,v] of Object.entries(optx)) {

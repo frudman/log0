@@ -49,6 +49,8 @@ class TerminalWindow {
     */
 
     #ctrlActions = [];
+    #mode = 'window'; // window, console, silent
+    #nl = '';
 
     constructor(stdin, stdout) {
 
@@ -78,10 +80,20 @@ class TerminalWindow {
         this.fmtOpts = { depth: 2, colors: true, };
     }
 
+    get TW() { return this; }
+    setMode(mode = 'window') { 
+        this.#mode = mode; 
+        this.#nl = (this.#mode === 'console') ? '\n' : '';
+    }
+
+    get isWindow() { return this.#mode === 'window'; }
+    get isConsole() { return this.#mode === 'console'; }
+    get isSilent() { return this.#mode === 'silent'; }
+
     setWindowTitle(title) { setWindowTitle(title); }
 
-    wr(...args) { this.stdout.write(toDebugString(this.fmtOpts, ...args)); return this; }
-    wrln(...args) { this.stdout.write(toDebugString(this.fmtOpts, ...args) + '\n'); return this; }
+    wr(...args) { this.isSilent || this.stdout.write(this.#nl + toDebugString(this.fmtOpts, ...args)); return this; }
+    wrln(...args) { this.isSilent || this.stdout.write(this.#nl + toDebugString(this.fmtOpts, ...args) + '\n'); return this; }
 
 
     // IMPORTANT LINKS:
@@ -98,14 +110,15 @@ class TerminalWindow {
 
 
     moveTo(line, column) { 
+        if (!this.isWindow) return this;
         this.stdout.cursorTo(column || 0, line);
         (column === undefined) && this.stdout.clearLine(); 
         return this; 
     }
 
-    clearLine() { this.stdout.clearLine(0); return this; }
-    clearToEndOfLine() { this.stdout.clearLine(1); return this; }
-    clearToEndOfWindow() { this.stdout.clearScreenDown(); return this; }
+    clearLine() { this.isWindow && this.stdout.clearLine(0); return this; }
+    clearToEndOfLine() { this.isWindow && this.stdout.clearLine(1); return this; }
+    clearToEndOfWindow() { this.isWindow && this.stdout.clearScreenDown(); return this; }
 
     onResize(action) { this.stdout.on('resize', action); return this; }
 
@@ -125,6 +138,14 @@ class TerminalWindow {
         if (str === TerminalWindow.ctrl.end) return true;
         if (str === TerminalWindow.ctrl.home) return true;
         return false;
+    }
+
+    get ALTS() {
+        return {
+            'C': `\u00e7`,
+            'W': `\u2211`,
+            'S': `\u00df`,
+        }
     }
 
     whichArrowKey(str) {
@@ -164,5 +185,5 @@ class TerminalWindow {
 
 module.exports = {
     TerminalWindow,
-    enableMethodDestructuring, // why not...
+    enableMethodDestructuring, // useful for others so why not...
 }
