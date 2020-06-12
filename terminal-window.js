@@ -86,6 +86,8 @@ class TerminalWindow {
         this.#nl = (this.#mode === 'console') ? '\n' : '';
     }
 
+    // TODO: must document this feature in readme
+
     get isWindow() { return this.#mode === 'window'; }
     get isConsole() { return this.#mode === 'console'; }
     get isSilent() { return this.#mode === 'silent'; }
